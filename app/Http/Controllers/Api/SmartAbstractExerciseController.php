@@ -46,6 +46,8 @@ class SmartAbstractExerciseController extends Controller
             'amount' => $amount,
             'currency' => $currency,
             'description' => "Smart Abstract - {$smartAbstractExercise->title}",
+            'success_url' => route('payments.smart-abstract.success'),
+            'cancel_url' => route('payments.smart-abstract.cancel'),
             'metadata' => [
                 'smart_abstract_payment_id' => $payment->id,
                 'user_id' => $user->id,
