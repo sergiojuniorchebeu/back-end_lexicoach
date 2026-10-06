@@ -16,6 +16,11 @@ use Illuminate\Validation\ValidationException;
 
 class AiConversationSessionController extends Controller
 {
+    // Les sessions IA ne sont plus limitées (ni en nombre par jour, ni en
+    // durée) : cette constante sert uniquement à borner techniquement la
+    // session côté DB/OpenAI, pas à restreindre l'usage.
+    private const UNLIMITED_SESSION_SECONDS = 14400; // 4h
+
     public function __construct(
         private readonly AiFeedbackService $aiFeedbackService,
         private readonly GeminiLiveTokenService $geminiLiveTokenService,
@@ -40,27 +45,13 @@ class AiConversationSessionController extends Controller
             ]);
         }
 
-        if ($user->ai_conversation_daily_session_limit <= 0) {
-            throw ValidationException::withMessages([
-                'ai_conversation_daily_session_limit' => ['La conversation IA est desactivee pour ce compte.'],
-            ]);
-        }
-
-        $quota = $this->formatQuotaFor($user);
-
-        if ($quota['daily_sessions_remaining'] <= 0) {
-            throw ValidationException::withMessages([
-                'ai_conversation_daily_session_limit' => ['La limite de sessions IA du jour est atteinte.'],
-            ]);
-        }
-
         $now = now();
         $session = AiConversationSession::query()->create([
             'user_id' => $user->id,
-            'session_limit_seconds' => $user->ai_conversation_session_limit_seconds,
+            'session_limit_seconds' => self::UNLIMITED_SESSION_SECONDS,
             'status' => AiConversationSession::STATUS_ACTIVE,
             'started_at' => $now,
-            'expires_at' => $now->copy()->addSeconds($user->ai_conversation_session_limit_seconds),
+            'expires_at' => $now->copy()->addSeconds(self::UNLIMITED_SESSION_SECONDS),
         ]);
 
         return response()->json([

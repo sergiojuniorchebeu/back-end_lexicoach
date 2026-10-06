@@ -49,6 +49,14 @@ class SmartAbstractExercise extends Model
     }
 
     /**
+     * @return HasMany<SmartAbstractPayment, $this>
+     */
+    public function payments(): HasMany
+    {
+        return $this->hasMany(SmartAbstractPayment::class);
+    }
+
+    /**
      * @return array<string, string>
      */
     protected function casts(): array

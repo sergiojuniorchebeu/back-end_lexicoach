@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\GlobalProgressController;
 use App\Http\Controllers\Api\LearnerAssociationCodeController;
 use App\Http\Controllers\Api\LearningModeController;
+use App\Http\Controllers\Api\MercyPayWebhookController;
 use App\Http\Controllers\Api\ReadingExerciseController;
 use App\Http\Controllers\Api\ReadingProgressController;
 use App\Http\Controllers\Api\RealtimeSessionController;
@@ -21,6 +22,11 @@ use App\Http\Controllers\Api\WritingProgressController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/docs', ApiDocumentationController::class);
+
+// Public : Mercy Pay appelle cette URL directement, aucune session utilisateur.
+// La verification se fait via la signature HMAC (X-MercyPay-Signature), pas
+// via auth:sanctum.
+Route::post('/webhooks/mercy-pay', [MercyPayWebhookController::class, 'handle']);
 
 Route::prefix('auth')->group(function (): void {
     Route::post('/register', [AuthController::class, 'register']);
@@ -51,6 +57,8 @@ Route::middleware(['auth:sanctum', 'role:learner'])->group(function (): void {
     Route::get('/smart-abstract-exercises', [SmartAbstractExerciseController::class, 'index']);
     Route::get('/smart-abstract-exercises/{smartAbstractExercise}', [SmartAbstractExerciseController::class, 'show']);
     Route::post('/smart-abstract-exercises/{smartAbstractExercise}/evaluate', [SmartAbstractExerciseController::class, 'evaluate']);
+    Route::post('/smart-abstract-exercises/{smartAbstractExercise}/checkout', [SmartAbstractExerciseController::class, 'checkout']);
+    Route::get('/smart-abstract-payments/{smartAbstractPayment}', [SmartAbstractExerciseController::class, 'paymentStatus']);
     Route::get('/me/smart-abstract-attempts', [SmartAbstractProgressController::class, 'attempts']);
     Route::get('/me/smart-abstract-progress', [SmartAbstractProgressController::class, 'progress']);
     Route::get('/me/progress', GlobalProgressController::class);

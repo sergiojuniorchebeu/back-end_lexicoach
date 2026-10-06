@@ -6,16 +6,79 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\EvaluateSmartAbstractExerciseRequest;
 use App\Models\SmartAbstractAttempt;
 use App\Models\SmartAbstractExercise;
+use App\Models\SmartAbstractPayment;
 use App\Models\User;
 use App\Services\Ai\AiFeedbackService;
+use App\Services\Payments\MercyPayClient;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use RuntimeException;
 
 class SmartAbstractExerciseController extends Controller
 {
     public function __construct(
         private readonly AiFeedbackService $aiFeedbackService,
+        private readonly MercyPayClient $mercyPayClient,
     ) {}
+
+    public function checkout(SmartAbstractExercise $smartAbstractExercise, Request $request): JsonResponse
+    {
+        abort_unless($smartAbstractExercise->is_active, 404);
+
+        $user = $request->user();
+        abort_unless($user instanceof User, 401);
+
+        $amount = (int) config('mercypay.smart_abstract.amount');
+        $currency = (string) config('mercypay.smart_abstract.currency');
+
+        $payment = SmartAbstractPayment::query()->create([
+            'user_id' => $user->id,
+            'smart_abstract_exercise_id' => $smartAbstractExercise->id,
+            'checkout_reference' => (string) Str::uuid(),
+            'amount' => $amount,
+            'currency' => $currency,
+            'status' => SmartAbstractPayment::STATUS_PENDING,
+        ]);
+
+        $session = $this->mercyPayClient->createCheckoutSession([
+            'amount' => $amount,
+            'currency' => $currency,
+            'description' => "Smart Abstract - {$smartAbstractExercise->title}",
+            'metadata' => [
+                'smart_abstract_payment_id' => $payment->id,
+                'user_id' => $user->id,
+                'smart_abstract_exercise_id' => $smartAbstractExercise->id,
+            ],
+        ], idempotencyKey: 'smart-abstract-'.$payment->id);
+
+        $payment->update(['checkout_reference' => $session['reference']]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Checkout session created.',
+            'data' => [
+                'payment' => $this->formatPayment($payment),
+                'checkout_url' => $session['checkout_url'],
+            ],
+        ], 201);
+    }
+
+    public function paymentStatus(SmartAbstractPayment $smartAbstractPayment, Request $request): JsonResponse
+    {
+        $user = $request->user();
+        abort_unless($user instanceof User, 401);
+        abort_unless($smartAbstractPayment->user_id === $user->id, 403);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Payment status retrieved.',
+            'data' => [
+                'payment' => $this->formatPayment($smartAbstractPayment),
+            ],
+        ]);
+    }
 
     public function index(): JsonResponse
     {
@@ -57,12 +120,28 @@ class SmartAbstractExerciseController extends Controller
         $user = $request->user();
         abort_unless($user instanceof User, 401);
 
+        $payment = $this->consumeAvailablePayment($user, $smartAbstractExercise);
+
+        if (! $payment instanceof SmartAbstractPayment) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Payment required.',
+                'errors' => [
+                    'payment' => ['Un paiement de '.config('mercypay.smart_abstract.amount').' '.config('mercypay.smart_abstract.currency').' est requis avant de lancer cette evaluation.'],
+                ],
+            ], 402);
+        }
+
         try {
             $result = $this->aiFeedbackService->evaluateSmartAbstract(
                 exercise: $smartAbstractExercise,
                 documentText: $request->validated('document_text'),
             );
         } catch (RuntimeException $exception) {
+            // L'IA a echoue : on rend le credit pour que l'utilisateur ne
+            // paie pas pour une evaluation qui n'a jamais eu lieu.
+            $payment->update(['consumed_at' => null]);
+
             return response()->json([
                 'success' => false,
                 'message' => 'AI service unavailable.',
@@ -126,6 +205,43 @@ class SmartAbstractExerciseController extends Controller
             'score' => $attempt->score,
             'status' => $attempt->status,
             'created_at' => $attempt->created_at,
+        ];
+    }
+
+    /**
+     * Atomically reserves the oldest available (paid, unconsumed) credit for
+     * this user/exercise pair, if any, and marks it consumed.
+     */
+    private function consumeAvailablePayment(User $user, SmartAbstractExercise $exercise): ?SmartAbstractPayment
+    {
+        return DB::transaction(function () use ($user, $exercise): ?SmartAbstractPayment {
+            $payment = SmartAbstractPayment::query()
+                ->where('user_id', $user->id)
+                ->where('smart_abstract_exercise_id', $exercise->id)
+                ->where('status', SmartAbstractPayment::STATUS_COMPLETED)
+                ->whereNull('consumed_at')
+                ->oldest()
+                ->lockForUpdate()
+                ->first();
+
+            $payment?->update(['consumed_at' => now()]);
+
+            return $payment;
+        });
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function formatPayment(SmartAbstractPayment $payment): array
+    {
+        return [
+            'id' => $payment->id,
+            'reference' => $payment->checkout_reference,
+            'amount' => $payment->amount,
+            'currency' => $payment->currency,
+            'status' => $payment->status,
+            'consumed_at' => $payment->consumed_at,
         ];
     }
 }
