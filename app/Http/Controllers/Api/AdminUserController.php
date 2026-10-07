@@ -65,7 +65,7 @@ class AdminUserController extends Controller
 
         if ($admin instanceof User && $admin->is($user) && $validated['role'] !== User::ROLE_ADMIN) {
             throw ValidationException::withMessages([
-                'role' => ['Un admin ne peut pas retirer son propre role admin.'],
+                'role' => ['An admin cannot remove their own admin role.'],
             ]);
         }
 
@@ -97,7 +97,7 @@ class AdminUserController extends Controller
 
         if ($isSelfLockout) {
             throw ValidationException::withMessages([
-                'status' => ['Un admin ne peut pas suspendre ou bloquer son propre compte.'],
+                'status' => ['An admin cannot suspend or block their own account.'],
             ]);
         }
 

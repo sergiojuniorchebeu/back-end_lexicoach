@@ -51,9 +51,8 @@ class AdminDashboardSummary
                 'average_writing_score' => $totalWritingAttempts > 0
                     ? (int) round((float) WritingExerciseAttempt::query()->avg('score'))
                     : 0,
-                // Smart Abstract n'est jamais note (l'IA resume, elle ne
-                // juge pas l'apprenant) : pas de score ici, seulement un
-                // volume de resumes generes.
+                // Smart Abstract is never scored because AI summarizes without
+                // grading the learner. Only generated summary volume is shown.
                 'smart_abstract_exercises' => SmartAbstractExercise::query()->count(),
                 'smart_abstract_attempts' => $totalSmartAbstractAttempts,
             ],

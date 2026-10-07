@@ -98,31 +98,23 @@ class ConversationControlService
 
         return match (true) {
             $text === '' => AssistantIntent::Unclear,
-            Str::contains($lower, ['stop', 'arrête', 'arrete', 'pause']) => AssistantIntent::Repeat,
-            Str::contains($lower, ['repeat', 'répète', 'repete', 'again', 'recommence']) => AssistantIntent::Repeat,
-            Str::contains($lower, ['slow', 'lentement', 'slower', 'doucement']) => AssistantIntent::SlowDown,
-            Str::contains($lower, ['read', 'lis ', 'lire', 'lecture']) => AssistantIntent::ReadText,
+            Str::contains($lower, ['stop', 'pause']) => AssistantIntent::Repeat,
+            Str::contains($lower, ['repeat', 'again']) => AssistantIntent::Repeat,
+            Str::contains($lower, ['slow', 'slower']) => AssistantIntent::SlowDown,
+            Str::contains($lower, ['read', 'reading']) => AssistantIntent::ReadText,
             Str::contains($lower, [
                 'explain',
-                'explique',
-                'comprendre',
                 'understand',
                 'meaning',
-                'parle-moi',
-                'parle moi',
-                'dis-moi',
-                'dis moi',
                 'tell me about',
                 'talk about',
                 'what is',
-                'c est quoi',
-                "c'est quoi",
             ]) => AssistantIntent::ExplainText,
-            Str::contains($lower, ['summary', 'summarize', 'résume', 'resume', 'résumé']) => AssistantIntent::Summarize,
-            Str::contains($lower, ['reformule', 'rephrase', 'simplifie', 'simplify']) => AssistantIntent::Reformulate,
-            Str::contains($lower, ['write', 'écrire', 'ecrire', 'rédige', 'redige']) => AssistantIntent::HelpWrite,
-            Str::contains($lower, ['correct', 'corrige', 'mistake', 'erreur']) => AssistantIntent::CorrectText,
-            Str::contains($lower, ["i don't understand", 'je ne comprends pas', 'pas compris']) => AssistantIntent::Unclear,
+            Str::contains($lower, ['summary', 'summarize', 'resume']) => AssistantIntent::Summarize,
+            Str::contains($lower, ['rephrase', 'simplify']) => AssistantIntent::Reformulate,
+            Str::contains($lower, ['write', 'draft']) => AssistantIntent::HelpWrite,
+            Str::contains($lower, ['correct', 'mistake', 'error']) => AssistantIntent::CorrectText,
+            Str::contains($lower, ["i don't understand", 'not clear']) => AssistantIntent::Unclear,
             default => AssistantIntent::GeneralConversation,
         };
     }
@@ -185,44 +177,44 @@ class ConversationControlService
         array $state,
     ): string {
         return <<<PROMPT
-Tu es un assistant vocal pour une personne dyslexique.
-Tu dois aider a lire, comprendre, reformuler, ecrire ou resumer.
+You are a voice assistant for a dyslexic learner.
+You help the learner read, understand, rephrase, write, or summarize.
 
-Regles absolues:
-1. Reponds avec des phrases courtes.
-2. Une seule idee a la fois.
-3. Maximum 3 phrases.
-4. Ne change pas de sujet.
-5. Ne donne pas d'informations non demandees.
-6. Si la demande est floue, pose une seule question de clarification.
-7. Utilise un ton calme, clair et encourageant.
-8. Si tu corriges, explique seulement la correction principale.
-9. Termine par une action claire ou une question simple.
-10. Ne repete pas une salutation precedente si l utilisateur demande un sujet.
-11. Si l utilisateur dit "parle-moi de X", explique X directement.
+Absolute rules:
+1. Answer with short sentences.
+2. Use one idea at a time.
+3. Maximum 3 sentences.
+4. Do not change the subject.
+5. Do not add information that was not requested.
+6. If the request is unclear, ask one clarification question.
+7. Use a calm, clear, encouraging tone.
+8. If you correct something, explain only the main correction.
+9. End with one clear action or one simple question.
+10. Do not repeat a previous greeting if the user asks about a topic.
+11. If the user says "tell me about X", explain X directly.
 
-Memoire courte:
-- Dernier sujet: {$state['last_topic']}
-- Derniere intention: {$state['last_intent']}
-- Derniere reponse assistant: {$state['last_assistant_answer']}
-- Preference: phrases simples et courtes
+Short memory:
+- Last topic: {$state['last_topic']}
+- Last intent: {$state['last_intent']}
+- Last assistant answer: {$state['last_assistant_answer']}
+- Preference: short and simple sentences
 
-Tour actuel:
-- Intention detectee: {$intent->value}
-- Demande utilisateur: "{$userTranscript}"
+Current turn:
+- Detected intent: {$intent->value}
+- User request: "{$userTranscript}"
 
-Tache exacte:
+Exact task:
 {$task}
 
-Contraintes:
-- Maximum 3 phrases.
-- Une seule question maximum.
-- Pas de liste.
-- Pas de paragraphe long.
-- Pas de formule comme "en tant que".
-- Ne reponds pas par une simple salutation si la demande contient un sujet.
+Constraints:
+- Maximum 3 sentences.
+- Maximum one question.
+- No lists.
+- No long paragraphs.
+- Do not use phrases like "as an AI".
+- Do not answer with only a greeting if the request contains a topic.
 
-Retourne uniquement le JSON demande.
+Return only the requested JSON.
 PROMPT;
     }
 

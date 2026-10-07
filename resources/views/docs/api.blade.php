@@ -593,7 +593,7 @@
                             <path d="M8 8V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                             <path d="M4 8h9a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4V8Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
                         </svg>
-                        Copier la doc en .md
+                        Copy docs as .md
                     </button>
                     <span class="copy-status" id="copy-markdown-status" aria-live="polite"></span>
                 </div>
@@ -621,7 +621,7 @@
     <textarea class="markdown-source" id="markdown-documentation" aria-hidden="true" tabindex="-1">{{ $markdownDocumentation }}</textarea>
 
     <main>
-        <nav aria-label="Modules de documentation">
+        <nav aria-label="Documentation modules">
             <strong>
                 <svg class="icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                     <path d="M4 6h16M4 12h16M4 18h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
@@ -631,10 +631,10 @@
             @foreach ($documentation['modules'] as $module)
                 <a href="#{{ $module['slug'] }}"><span class="nav-dot"></span>{{ $module['name'] }}</a>
             @endforeach
-            <a href="#roles"><span class="nav-dot"></span>Roles utilisateur</a>
-            <a href="#scenarios"><span class="nav-dot"></span>Scenarios frontend</a>
-            <a href="#real-cases"><span class="nav-dot"></span>Cas reels</a>
-            <a href="#flutter"><span class="nav-dot"></span>Exemples Flutter</a>
+            <a href="#roles"><span class="nav-dot"></span>User roles</a>
+            <a href="#scenarios"><span class="nav-dot"></span>Frontend scenarios</a>
+            <a href="#real-cases"><span class="nav-dot"></span>Real cases</a>
+            <a href="#flutter"><span class="nav-dot"></span>Flutter examples</a>
         </nav>
 
         <div class="content">
@@ -646,7 +646,7 @@
                             <path d="M9 12h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
                         </svg>
                     </span>
-                    <h2>Headers importants</h2>
+                    <h2>Important Headers</h2>
                 </div>
                 <pre><code>{{ json_encode($documentation['important_headers'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) }}</code></pre>
             </section>
@@ -659,7 +659,7 @@
                             <path d="m8 8 4 4-4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                         </svg>
                     </span>
-                    <h2>Etapes cote frontend</h2>
+                    <h2>Frontend Steps</h2>
                 </div>
                 <ol>
                     @foreach ($documentation['frontend_steps'] as $step)
@@ -678,24 +678,24 @@
                             <path d="M16 3.1a4 4 0 0 1 0 7.8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
                         </svg>
                     </span>
-                    <h2>Roles utilisateur</h2>
+                    <h2>User Roles</h2>
                 </div>
-                <p class="section-description">Le backend gere les roles <code>learner</code>, <code>tutor</code> et <code>admin</code>. Le role <code>visitor</code> represente une personne non connectee et n est pas stocke en base.</p>
+                <p class="section-description">The backend manages the <code>learner</code>, <code>tutor</code>, and <code>admin</code> roles. The <code>visitor</code> role represents a guest user and is not stored in the database.</p>
 
                 <div class="guide-grid">
                     @foreach ($documentation['roles'] as $role)
                         <article class="guide-card">
                             <div class="guide-card-header">
-                                <span class="guide-tag">{{ $role['stored_in_database'] ? 'Compte connecte' : 'Public' }}</span>
+                                <span class="guide-tag">{{ $role['stored_in_database'] ? 'Signed-in account' : 'Public' }}</span>
                                 <h3>{{ $role['name'] }}</h3>
                                 <p>{{ $role['description'] }}</p>
                             </div>
 
                             <div class="guide-body compact">
                                 <div class="guide-list">
-                                    <h4>Stockage</h4>
+                                    <h4>Storage</h4>
                                     <ul>
-                                        <li>{{ $role['stored_in_database'] ? 'Ce role est stocke dans la colonne users.role.' : 'Ce role n est pas stocke en base.' }}</li>
+                                        <li>{{ $role['stored_in_database'] ? 'This role is stored in the users.role column.' : 'This role is not stored in the database.' }}</li>
                                     </ul>
                                 </div>
 
@@ -721,9 +721,9 @@
                             <path d="m16 10 3 2-3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                         </svg>
                     </span>
-                    <h2>Scenarios et role du frontend</h2>
+                    <h2>Scenarios and Frontend Role</h2>
                 </div>
-                <p class="section-description">Ces scenarios expliquent le deroulement attendu dans l application mobile et les appels API a faire pour chaque fonctionnalite.</p>
+                <p class="section-description">These scenarios explain the expected mobile app flow and the API calls needed for each feature.</p>
 
                 <div class="guide-grid">
                     @foreach ($documentation['feature_guides'] as $guide)
@@ -738,7 +738,7 @@
                                 </span>
                                 <h3>{{ $guide['title'] }}</h3>
                                 <p>{{ $guide['goal'] }}</p>
-                                <p><strong>Utilisateur:</strong> {{ $guide['user_story'] }}</p>
+                                <p><strong>User:</strong> {{ $guide['user_story'] }}</p>
                             </div>
 
                             <div class="guide-body">
@@ -800,9 +800,9 @@
                             <path d="M3 6h.01M3 12h.01M3 18h.01" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
                         </svg>
                     </span>
-                    <h2>Cas reels importants</h2>
+                    <h2>Important Real Cases</h2>
                 </div>
-                <p class="section-description">Ces cas montrent comment les fonctionnalites se comportent dans une vraie utilisation de LexiCoach.</p>
+                <p class="section-description">These cases show how the features behave in real LexiCoach usage.</p>
 
                 <div class="guide-grid">
                     @foreach ($documentation['real_cases'] as $case)
@@ -815,7 +815,7 @@
 
                             <div class="guide-body">
                                 <div class="guide-list">
-                                    <h4>Actions frontend</h4>
+                                    <h4>Frontend Actions</h4>
                                     <ul>
                                         @foreach ($case['frontend_actions'] as $action)
                                             <li>{{ $action }}</li>
@@ -824,7 +824,7 @@
                                 </div>
 
                                 <div class="guide-list">
-                                    <h4>Routes utilisees</h4>
+                                    <h4>Routes Used</h4>
                                     <ul>
                                         @foreach ($case['routes'] as $route)
                                             <li><code>{{ $route }}</code></li>
@@ -865,7 +865,7 @@
                                 <h3>{{ $endpoint['name'] }}</h3>
                                 <span class="path">{{ $endpoint['path'] }}</span>
                                 <span class="pill {{ $endpoint['protected'] ? 'warning' : 'neutral' }}">
-                                    {{ $endpoint['protected'] ? 'Token requis' : 'Public' }}
+                                    {{ $endpoint['protected'] ? 'Token required' : 'Public' }}
                                 </span>
                             </div>
 
@@ -887,9 +887,9 @@
                                         <path d="M7 4h10a2 2 0 0 1 2 2v14H5V6a2 2 0 0 1 2-2Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
                                         <path d="M8 9h8M8 13h8M8 17h5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
                                     </svg>
-                                    Body a envoyer
+                                    Request Body
                                 </div>
-                                <pre><code>{{ $endpoint['request_body'] === null ? 'Aucun body' : json_encode($endpoint['request_body'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) }}</code></pre>
+                                <pre><code>{{ $endpoint['request_body'] === null ? 'No body' : json_encode($endpoint['request_body'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) }}</code></pre>
                             </div>
 
                             @foreach ($endpoint['responses'] as $response)
@@ -899,7 +899,7 @@
                                             <path d="m5 12 4 4L19 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                                             <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
                                         </svg>
-                                        Reponse {{ $response['status'] }} - {{ $response['title'] }}
+                                        Response {{ $response['status'] }} - {{ $response['title'] }}
                                     </div>
                                     <pre><code>{{ json_encode($response['body'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) }}</code></pre>
                                 </div>
@@ -917,9 +917,9 @@
                             <path d="M10 18h4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
                         </svg>
                     </span>
-                    <h2>Exemples Flutter</h2>
+                    <h2>Flutter Examples</h2>
                 </div>
-                <p class="section-description">Ces exemples montrent comment une app Flutter peut appeler le backend, recuperer le token Sanctum et l'utiliser sur les routes protegees.</p>
+                <p class="section-description">These examples show how a Flutter app can call the backend, retrieve the Sanctum token, and use protected routes.</p>
 
                 @foreach ($documentation['flutter_examples'] as $example)
                     <article class="endpoint-card">

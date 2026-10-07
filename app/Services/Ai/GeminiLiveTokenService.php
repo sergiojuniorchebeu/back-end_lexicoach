@@ -30,11 +30,11 @@ class GeminiLiveTokenService
         $expireAt = $this->tokenExpireAt($session);
 
         $apiKey = $this->keyPool->currentKey();
-        $attemptsLeft = 2; // la cle courante, puis une seule bascule de secours
+        $attemptsLeft = 2; // current key, then one fallback key
 
         while (true) {
             if ($apiKey === null) {
-                throw new RuntimeException('Toutes les cles Gemini sont epuisees.');
+                throw new RuntimeException('All Gemini keys are exhausted.');
             }
 
             try {

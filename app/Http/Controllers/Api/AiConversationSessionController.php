@@ -16,9 +16,8 @@ use Illuminate\Validation\ValidationException;
 
 class AiConversationSessionController extends Controller
 {
-    // Les sessions IA ne sont plus limitées (ni en nombre par jour, ni en
-    // durée) : cette constante sert uniquement à borner techniquement la
-    // session côté DB/OpenAI, pas à restreindre l'usage.
+    // AI sessions are not product-limited anymore. This constant only keeps a
+    // technical upper bound in the database/OpenAI session.
     private const UNLIMITED_SESSION_SECONDS = 14400; // 4h
 
     public function __construct(
@@ -100,7 +99,7 @@ class AiConversationSessionController extends Controller
         if ($aiConversationSession->status !== AiConversationSession::STATUS_ACTIVE
             || $aiConversationSession->expires_at->isPast()) {
             throw ValidationException::withMessages([
-                'session' => ['Cette session conversation IA n est plus active.'],
+                'session' => ['This AI conversation session is no longer active.'],
             ]);
         }
 
@@ -201,7 +200,7 @@ class AiConversationSessionController extends Controller
         if ($aiConversationSession->status !== AiConversationSession::STATUS_ACTIVE
             || $aiConversationSession->expires_at->isPast()) {
             throw ValidationException::withMessages([
-                'session' => ['Cette session conversation IA n est plus active.'],
+                'session' => ['This AI conversation session is no longer active.'],
             ]);
         }
 

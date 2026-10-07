@@ -68,9 +68,8 @@ class SmartAbstractExerciseController extends Controller
     }
 
     /**
-     * Consomme un credit de paiement pour autoriser la lecture a voix haute
-     * (TTS) du document par l'app. Aucun appel IA ici : le texte est deja
-     * cote client, seule l'autorisation de lecture est payante.
+     * Consumes one payment credit to authorize document read-aloud in the app.
+     * No AI call happens here; only playback authorization is paid.
      */
     public function listen(SmartAbstractExercise $smartAbstractExercise, Request $request): JsonResponse
     {
@@ -86,14 +85,14 @@ class SmartAbstractExerciseController extends Controller
                 'success' => false,
                 'message' => 'Payment required.',
                 'errors' => [
-                    'payment' => ['Un paiement de '.config('mercypay.smart_abstract.amount').' '.config('mercypay.smart_abstract.currency').' est requis pour ecouter ce document.'],
+                    'payment' => ['A payment of '.config('mercypay.smart_abstract.amount').' '.config('mercypay.smart_abstract.currency').' is required to listen to this document.'],
                 ],
             ], 402);
         }
 
         return response()->json([
             'success' => true,
-            'message' => 'Lecture autorisee.',
+            'message' => 'Playback authorized.',
             'data' => [
                 'payment' => $this->formatPayment($payment),
             ],
@@ -155,8 +154,8 @@ class SmartAbstractExerciseController extends Controller
         $user = $request->user();
         abort_unless($user instanceof User, 401);
 
-        // Le resume Smart Abstract est gratuit. Seule la lecture a voix
-        // haute du document (cf. listen()) est payante.
+        // Smart Abstract summaries are free. Only document read-aloud
+        // playback is paid.
         try {
             $result = $this->aiFeedbackService->evaluateSmartAbstract(
                 exercise: $smartAbstractExercise,

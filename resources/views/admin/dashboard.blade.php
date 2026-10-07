@@ -455,12 +455,12 @@
                     <div>
                         <p class="eyebrow">LexiCoach</p>
                         <h1>Admin Dashboard</h1>
-                        <p class="muted">Gestion des comptes, roles et statistiques globales.</p>
+                        <p class="muted">Manage accounts, roles, and global statistics.</p>
                     </div>
                     <div class="actions">
                         <span class="pill" id="admin-name">Admin</span>
-                        <button class="button" id="refresh-dashboard">Actualiser</button>
-                        <button class="button button-primary" id="logout">Deconnexion</button>
+                        <button class="button" id="refresh-dashboard">Refresh</button>
+                        <button class="button button-primary" id="logout">Log out</button>
                     </div>
                 </header>
 
@@ -472,34 +472,34 @@
                     <div class="panel">
                         <div class="section-head">
                             <div>
-                                <h2>Gestion des comptes</h2>
-                                <p class="muted">Recherche, filtre et modification des roles.</p>
+                                <h2>Account Management</h2>
+                                <p class="muted">Search, filter, and update roles.</p>
                             </div>
                             <div class="filters">
                                 <label>
-                                    Recherche
-                                    <input id="search" type="search" placeholder="Nom ou email">
+                                    Search
+                                    <input id="search" type="search" placeholder="Name or email">
                                 </label>
                                 <label>
                                     Role
                                     <select id="role-filter">
-                                        <option value="all">Tous</option>
+                                        <option value="all">All</option>
                                         <option value="learner">Learner</option>
                                         <option value="tutor">Tutor</option>
                                         <option value="admin">Admin</option>
                                     </select>
                                 </label>
-                                <button class="button" id="filter-users">Filtrer</button>
+                                <button class="button" id="filter-users">Filter</button>
                             </div>
                         </div>
                         <div class="user-cards" id="users-body"></div>
-                        <div class="empty" id="users-empty" hidden>Aucun utilisateur ne correspond au filtre.</div>
+                        <div class="empty" id="users-empty" hidden>No users match this filter.</div>
                     </div>
 
                     <aside style="display: grid; gap: 18px;">
                         <section class="panel activity">
-                            <h2>Generer des exercices</h2>
-                            <p class="muted">Creation de nouveaux exercices par IA.</p>
+                            <h2>Generate Exercises</h2>
+                            <p class="muted">Create new exercises with AI.</p>
                             <div class="side-list" style="margin-top: 14px;">
                                 <label>
                                     Mode
@@ -510,7 +510,7 @@
                                     </select>
                                 </label>
                                 <label>
-                                    Niveau
+                                    Level
                                     <select id="generate-level">
                                         <option value="beginner">Beginner</option>
                                         <option value="intermediate">Intermediate</option>
@@ -518,25 +518,25 @@
                                     </select>
                                 </label>
                                 <label>
-                                    Langue
+                                    Language
                                     <input id="generate-language" type="text" value="en-US">
                                 </label>
                                 <label>
-                                    Nombre
+                                    Count
                                     <input id="generate-count" type="number" min="1" max="10" value="3">
                                 </label>
-                                <button class="button button-primary" id="generate-button">Generer</button>
+                                <button class="button button-primary" id="generate-button">Generate</button>
                             </div>
                             <div class="generate-result" id="generate-result" hidden></div>
                         </section>
 
                         <section class="panel activity">
-                            <h2>Repartition</h2>
+                            <h2>Breakdown</h2>
                             <div class="side-list" id="roles-breakdown"></div>
                         </section>
 
                         <section class="panel activity">
-                            <h2>Dernieres tentatives</h2>
+                            <h2>Latest Attempts</h2>
                             <div class="side-list" id="recent-attempts"></div>
                         </section>
                     </aside>
@@ -609,7 +609,7 @@
                         return;
                     }
 
-                    showNotice(error.message || 'Erreur API.');
+                    showNotice(error.message || 'API error.');
                 } finally {
                     setLoading(false);
                 }
@@ -639,17 +639,17 @@
                         return;
                     }
 
-                    showNotice(error.message || 'Erreur API.');
+                    showNotice(error.message || 'API error.');
                 }
             }
 
             function renderDashboard() {
                 elements.metrics.innerHTML = [
-                    metricCard('Utilisateurs', dashboard.users.total, `${dashboard.users.learners} learners, ${dashboard.users.tutors} tutors`, 'U'),
-                    metricCard('Reading attempts', dashboard.learning.reading_attempts, `${dashboard.learning.average_reading_score}% de moyenne`, 'R'),
-                    metricCard('Writing attempts', dashboard.learning.writing_attempts || 0, `${dashboard.learning.average_writing_score || 0}% de moyenne`, 'W'),
-                    metricCard('Smart abstract', dashboard.learning.smart_abstract_attempts || 0, `${dashboard.learning.smart_abstract_exercises || 0} documents disponibles`, 'A'),
-                    metricCard('Associations', dashboard.tutor_view.linked_pairs, `${dashboard.tutor_view.tutors_with_learners} tutors actifs`, 'L'),
+                    metricCard('Users', dashboard.users.total, `${dashboard.users.learners} learners, ${dashboard.users.tutors} tutors`, 'U'),
+                    metricCard('Reading attempts', dashboard.learning.reading_attempts, `${dashboard.learning.average_reading_score}% average`, 'R'),
+                    metricCard('Writing attempts', dashboard.learning.writing_attempts || 0, `${dashboard.learning.average_writing_score || 0}% average`, 'W'),
+                    metricCard('Smart abstract', dashboard.learning.smart_abstract_attempts || 0, `${dashboard.learning.smart_abstract_exercises || 0} available documents`, 'A'),
+                    metricCard('Associations', dashboard.tutor_view.linked_pairs, `${dashboard.tutor_view.tutors_with_learners} active tutors`, 'L'),
                 ].join('');
 
                 elements.rolesBreakdown.innerHTML = [
@@ -659,7 +659,7 @@
                 ].join('');
 
                 if (dashboard.recent_attempts.length === 0) {
-                    elements.recentAttempts.innerHTML = '<p class="muted">Aucune tentative recente.</p>';
+                    elements.recentAttempts.innerHTML = '<p class="muted">No recent attempts.</p>';
                     return;
                 }
 
@@ -679,26 +679,26 @@
             }
 
             const STATUS_LABELS = {
-                active: 'Actif',
-                suspended: 'Suspendu',
-                blocked: 'Bloque',
+                active: 'Active',
+                suspended: 'Suspended',
+                blocked: 'Blocked',
             };
 
             function statusActionsFor(status) {
                 if (status === 'blocked') {
-                    return [{ label: 'Reactiver', next: 'active' }];
+                    return [{ label: 'Reactivate', next: 'active' }];
                 }
 
                 if (status === 'suspended') {
                     return [
-                        { label: 'Reactiver', next: 'active' },
-                        { label: 'Bloquer', next: 'blocked' },
+                        { label: 'Reactivate', next: 'active' },
+                        { label: 'Block', next: 'blocked' },
                     ];
                 }
 
                 return [
-                    { label: 'Suspendre', next: 'suspended' },
-                    { label: 'Bloquer', next: 'blocked' },
+                    { label: 'Suspend', next: 'suspended' },
+                    { label: 'Block', next: 'blocked' },
                 ];
             }
 
@@ -753,10 +753,10 @@
                         token,
                         body: JSON.stringify({ status: nextStatus }),
                     });
-                    showNotice(nextStatus === 'suspended' ? 'Compte suspendu.' : 'Compte reactive.');
+                    showNotice(nextStatus === 'suspended' ? 'Account suspended.' : 'Account reactivated.');
                     await loadUsers();
                 } catch (error) {
-                    showNotice(error.message || 'Impossible de modifier le statut.');
+                    showNotice(error.message || 'Could not update the status.');
                 } finally {
                     setLoading(false);
                 }
@@ -769,7 +769,7 @@
                 const count = Number.parseInt(document.getElementById('generate-count').value, 10);
 
                 if (language === '' || !Number.isFinite(count)) {
-                    showNotice('Langue et nombre sont requis.');
+                    showNotice('Language and count are required.');
                     return;
                 }
 
@@ -789,10 +789,10 @@
                     elements.generateResult.innerHTML = exercises
                         .map((exercise) => `<div class="generate-result-item">${escapeHtml(exercise.title)}</div>`)
                         .join('');
-                    showNotice(`${exercises.length} exercice(s) genere(s).`);
+                    showNotice(`${exercises.length} exercise(s) generated.`);
                     await loadAdminArea();
                 } catch (error) {
-                    showNotice(error.message || 'Impossible de generer des exercices.');
+                    showNotice(error.message || 'Could not generate exercises.');
                 } finally {
                     setLoading(false);
                 }
@@ -823,7 +823,7 @@
                     const firstError = payload.errors
                         ? Object.values(payload.errors).flat()[0]
                         : null;
-                    const error = new Error(firstError || payload.message || 'Erreur API');
+                    const error = new Error(firstError || payload.message || 'API error');
                     error.status = response.status;
                     throw error;
                 }

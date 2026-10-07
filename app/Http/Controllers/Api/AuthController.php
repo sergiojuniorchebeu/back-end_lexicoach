@@ -84,7 +84,7 @@ class AuthController extends Controller
         }
 
         if (! $user->isActive()) {
-            $message = $user->isBlocked() ? 'Ce compte a ete bloque.' : 'Ce compte a ete suspendu.';
+            $message = $user->isBlocked() ? 'This account has been blocked.' : 'This account has been suspended.';
 
             throw ValidationException::withMessages([
                 'email' => [$message],

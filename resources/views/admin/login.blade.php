@@ -167,7 +167,7 @@
                 <div class="brand">
                     <div class="brand-mark">L</div>
                     <h1>Admin LexiCoach</h1>
-                    <p>Connecte-toi pour gerer les comptes, les roles et les statistiques.</p>
+                    <p>Sign in to manage accounts, roles, and statistics.</p>
                 </div>
 
                 <form class="card" id="login-form">
@@ -179,14 +179,14 @@
                     </label>
 
                     <label class="field">
-                        Mot de passe
+                        Password
                         <input id="password" type="password" placeholder="password123" required>
                     </label>
 
-                    <button class="button" id="login-button" type="submit">Se connecter</button>
+                    <button class="button" id="login-button" type="submit">Sign in</button>
 
                     <div class="hint">
-                        Apres le seed, le compte de demo est admin@example.com avec le mot de passe password123.
+                        After seeding, the demo account is admin@example.com with password password123.
                     </div>
                 </form>
             </section>
@@ -202,7 +202,7 @@
             form.addEventListener('submit', async (event) => {
                 event.preventDefault();
                 button.disabled = true;
-                button.textContent = 'Connexion...';
+                button.textContent = 'Signing in...';
                 showNotice('');
 
                 try {
@@ -216,17 +216,17 @@
                     });
 
                     if (response.data.user.role !== 'admin') {
-                        showNotice('Ce compte existe, mais il n a pas le role admin.');
+                        showNotice('This account exists, but it does not have the admin role.');
                         return;
                     }
 
                     window.localStorage.setItem(tokenKey, response.data.token.access_token);
                     window.location.href = '/admin/dashboard';
                 } catch (error) {
-                    showNotice(error.message || 'Erreur de connexion.');
+                    showNotice(error.message || 'Sign-in error.');
                 } finally {
                     button.disabled = false;
-                    button.textContent = 'Se connecter';
+                    button.textContent = 'Sign in';
                 }
             });
 
@@ -248,7 +248,7 @@
                     const firstError = payload.errors
                         ? Object.values(payload.errors).flat()[0]
                         : null;
-                    throw new Error(firstError || payload.message || 'Erreur API');
+                    throw new Error(firstError || payload.message || 'API error');
                 }
 
                 return payload;

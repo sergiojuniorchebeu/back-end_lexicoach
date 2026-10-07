@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="en">
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>{{ $success ? 'Paiement reussi' : 'Paiement annule' }} - LexiCoach</title>
+        <title>{{ $success ? 'Payment successful' : 'Payment canceled' }} - LexiCoach</title>
         <style>
             :root {
                 --primary: #6547E8;
@@ -52,8 +52,8 @@
     <body>
         <div class="card">
             <div class="badge">{{ $success ? '✓' : '×' }}</div>
-            <h1>{{ $success ? 'Paiement reussi' : 'Paiement annule' }}</h1>
-            <p>Vous pouvez retourner a l'application LexiCoach.</p>
+            <h1>{{ $success ? 'Payment successful' : 'Payment canceled' }}</h1>
+            <p>You can return to the LexiCoach app.</p>
         </div>
     </body>
 </html>

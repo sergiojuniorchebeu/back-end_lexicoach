@@ -19,7 +19,7 @@ class EnsureAccountIsActive
         $user = $request->user();
 
         if ($user instanceof User && ! $user->isActive()) {
-            $message = $user->isBlocked() ? 'Ce compte a ete bloque.' : 'Ce compte a ete suspendu.';
+            $message = $user->isBlocked() ? 'This account has been blocked.' : 'This account has been suspended.';
 
             abort(403, $message);
         }
