@@ -58,6 +58,7 @@ Route::middleware(['auth:sanctum', 'role:learner'])->group(function (): void {
     Route::get('/smart-abstract-exercises/{smartAbstractExercise}', [SmartAbstractExerciseController::class, 'show']);
     Route::post('/smart-abstract-exercises/{smartAbstractExercise}/evaluate', [SmartAbstractExerciseController::class, 'evaluate']);
     Route::post('/smart-abstract-exercises/{smartAbstractExercise}/checkout', [SmartAbstractExerciseController::class, 'checkout']);
+    Route::post('/smart-abstract-exercises/{smartAbstractExercise}/listen', [SmartAbstractExerciseController::class, 'listen']);
     Route::get('/smart-abstract-payments/{smartAbstractPayment}', [SmartAbstractExerciseController::class, 'paymentStatus']);
     Route::get('/me/smart-abstract-attempts', [SmartAbstractProgressController::class, 'attempts']);
     Route::get('/me/smart-abstract-progress', [SmartAbstractProgressController::class, 'progress']);

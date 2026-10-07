@@ -45,7 +45,7 @@ class SmartAbstractExerciseController extends Controller
         $session = $this->mercyPayClient->createCheckoutSession([
             'amount' => $amount,
             'currency' => $currency,
-            'description' => "Smart Abstract - {$smartAbstractExercise->title}",
+            'description' => "Lecture audio du document - {$smartAbstractExercise->title}",
             'success_url' => route('payments.smart-abstract.success'),
             'cancel_url' => route('payments.smart-abstract.cancel'),
             'metadata' => [
@@ -65,6 +65,39 @@ class SmartAbstractExerciseController extends Controller
                 'checkout_url' => $session['checkout_url'],
             ],
         ], 201);
+    }
+
+    /**
+     * Consomme un credit de paiement pour autoriser la lecture a voix haute
+     * (TTS) du document par l'app. Aucun appel IA ici : le texte est deja
+     * cote client, seule l'autorisation de lecture est payante.
+     */
+    public function listen(SmartAbstractExercise $smartAbstractExercise, Request $request): JsonResponse
+    {
+        abort_unless($smartAbstractExercise->is_active, 404);
+
+        $user = $request->user();
+        abort_unless($user instanceof User, 401);
+
+        $payment = $this->consumeAvailablePayment($user, $smartAbstractExercise);
+
+        if (! $payment instanceof SmartAbstractPayment) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Payment required.',
+                'errors' => [
+                    'payment' => ['Un paiement de '.config('mercypay.smart_abstract.amount').' '.config('mercypay.smart_abstract.currency').' est requis pour ecouter ce document.'],
+                ],
+            ], 402);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Lecture autorisee.',
+            'data' => [
+                'payment' => $this->formatPayment($payment),
+            ],
+        ]);
     }
 
     public function paymentStatus(SmartAbstractPayment $smartAbstractPayment, Request $request): JsonResponse
@@ -122,28 +155,14 @@ class SmartAbstractExerciseController extends Controller
         $user = $request->user();
         abort_unless($user instanceof User, 401);
 
-        $payment = $this->consumeAvailablePayment($user, $smartAbstractExercise);
-
-        if (! $payment instanceof SmartAbstractPayment) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Payment required.',
-                'errors' => [
-                    'payment' => ['Un paiement de '.config('mercypay.smart_abstract.amount').' '.config('mercypay.smart_abstract.currency').' est requis avant de lancer cette evaluation.'],
-                ],
-            ], 402);
-        }
-
+        // Le resume Smart Abstract est gratuit. Seule la lecture a voix
+        // haute du document (cf. listen()) est payante.
         try {
             $result = $this->aiFeedbackService->evaluateSmartAbstract(
                 exercise: $smartAbstractExercise,
                 documentText: $request->validated('document_text'),
             );
         } catch (RuntimeException $exception) {
-            // L'IA a echoue : on rend le credit pour que l'utilisateur ne
-            // paie pas pour une evaluation qui n'a jamais eu lieu.
-            $payment->update(['consumed_at' => null]);
-
             return response()->json([
                 'success' => false,
                 'message' => 'AI service unavailable.',
