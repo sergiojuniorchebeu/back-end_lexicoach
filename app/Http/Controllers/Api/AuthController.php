@@ -83,6 +83,12 @@ class AuthController extends Controller
             ])->status(401);
         }
 
+        if ($user->isSuspended()) {
+            throw ValidationException::withMessages([
+                'email' => ['Ce compte a ete suspendu.'],
+            ])->status(403);
+        }
+
         $token = $user->createToken($validated['device_name'] ?? 'api-client')->plainTextToken;
 
         return response()->json([

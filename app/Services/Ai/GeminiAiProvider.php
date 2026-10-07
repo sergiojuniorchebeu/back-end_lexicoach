@@ -5,12 +5,18 @@ namespace App\Services\Ai;
 use App\Models\SmartAbstractExercise;
 use App\Models\WritingExercise;
 use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use InvalidArgumentException;
 use RuntimeException;
 
 class GeminiAiProvider implements AiProvider
 {
+    public function __construct(
+        private readonly GeminiKeyPool $keyPool = new GeminiKeyPool,
+    ) {}
+
     /**
      * @return array<string, mixed>
      */
@@ -62,6 +68,41 @@ document and 2 to 4 "key_points" taken from the document itself.
 PROMPT;
 
         return $this->generateJson($prompt, $this->smartAbstractSchema(), [], 'smart_abstract_summary');
+    }
+
+    /**
+     * @param  array{level: string, language: string, count: int}  $params
+     * @return array<int, array<string, mixed>>
+     */
+    public function generateExercises(string $type, array $params): array
+    {
+        $level = $params['level'];
+        $language = $params['language'];
+        $count = $params['count'];
+
+        $guidance = match ($type) {
+            'reading' => 'Each exercise is a short sentence or paragraph the learner will read aloud. Keep sentences short and phonetically simple.',
+            'writing' => 'Each exercise is a writing prompt the learner answers in a few sentences. Give clear, concrete instructions.',
+            'smart-abstract' => 'Each exercise is a short source document the learner will summarize. Write a self-contained paragraph with a clear main idea.',
+            default => throw new InvalidArgumentException("Unsupported exercise type: {$type}"),
+        };
+
+        $prompt = <<<PROMPT
+You are LexiCoach, an educational content generator for dyslexic learners.
+Generate exactly {$count} new, distinct exercises.
+Language: {$language}
+Level: {$level}
+{$guidance}
+
+Use simple, clear, dyslexia-friendly wording. Do not repeat the same topic
+twice. Return only the JSON object requested by the schema.
+PROMPT;
+
+        $result = $this->generateJson($prompt, $this->exerciseGenerationSchema($type), [], "generate_{$type}_exercises");
+
+        $exercises = $result['exercises'] ?? [];
+
+        return is_array($exercises) ? $exercises : [];
     }
 
     /**
@@ -120,9 +161,7 @@ PROMPT;
         string $debugLabel = 'gemini_json',
     ): array
     {
-        $apiKey = config('ai.gemini.api_key');
-
-        if (! is_string($apiKey) || $apiKey === '') {
+        if (! $this->keyPool->hasAnyKey()) {
             throw new RuntimeException('GEMINI_API_KEY is missing.');
         }
 
@@ -144,28 +183,54 @@ PROMPT;
             'generation_config' => $generationConfig,
         ]);
 
-        try {
-            $response = Http::timeout($timeout)
-                ->acceptJson()
-                ->withHeaders(['x-goog-api-key' => $apiKey])
-                ->post("{$baseUrl}/models/{$model}:generateContent", [
-                    'contents' => [
-                        [
-                            'parts' => [
-                                ['text' => $prompt],
+        $apiKey = $this->keyPool->currentKey();
+        $attemptsLeft = 2; // la cle courante, puis une seule bascule de secours
+
+        while (true) {
+            if ($apiKey === null) {
+                throw new RuntimeException('Toutes les cles Gemini sont epuisees.');
+            }
+
+            try {
+                $response = Http::timeout($timeout)
+                    ->acceptJson()
+                    ->withHeaders(['x-goog-api-key' => $apiKey])
+                    ->post("{$baseUrl}/models/{$model}:generateContent", [
+                        'contents' => [
+                            [
+                                'parts' => [
+                                    ['text' => $prompt],
+                                ],
                             ],
                         ],
-                    ],
-                    'generationConfig' => $generationConfig,
+                        'generationConfig' => $generationConfig,
+                    ]);
+            } catch (ConnectionException $exception) {
+                $this->logGeminiDebug('Gemini connection failed', [
+                    'label' => $debugLabel,
+                    'model' => $model,
+                    'error' => $exception->getMessage(),
                 ]);
-        } catch (ConnectionException $exception) {
-            $this->logGeminiDebug('Gemini connection failed', [
-                'label' => $debugLabel,
-                'model' => $model,
-                'error' => $exception->getMessage(),
-            ]);
 
-            throw new RuntimeException('Gemini is unreachable: '.$exception->getMessage(), previous: $exception);
+                throw new RuntimeException('Gemini is unreachable: '.$exception->getMessage(), previous: $exception);
+            }
+
+            $attemptsLeft--;
+
+            if ($this->isQuotaExhausted($response) && $attemptsLeft > 0) {
+                $this->logGeminiDebug('Gemini key exhausted, switching to next key', [
+                    'label' => $debugLabel,
+                    'model' => $model,
+                    'status' => $response->status(),
+                ]);
+
+                $this->keyPool->markExhausted($apiKey);
+                $apiKey = $this->keyPool->nextKeyAfter($apiKey);
+
+                continue;
+            }
+
+            break;
         }
 
         if ($response->failed()) {
@@ -228,6 +293,23 @@ PROMPT;
     }
 
     /**
+     * Gemini returns 429 (or sometimes 403 with a RESOURCE_EXHAUSTED
+     * status) when the key's quota is used up.
+     */
+    private function isQuotaExhausted(Response $response): bool
+    {
+        if ($response->status() === 429) {
+            return true;
+        }
+
+        if ($response->status() === 403 && str_contains($response->body(), 'RESOURCE_EXHAUSTED')) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
      * @return array<string, mixed>
      */
     private function writingSchema(): array
@@ -280,6 +362,51 @@ PROMPT;
                 ],
             ],
             'required' => ['summary', 'key_points'],
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function exerciseGenerationSchema(string $type): array
+    {
+        $itemProperties = match ($type) {
+            'reading' => [
+                'title' => ['type' => 'STRING'],
+                'text' => ['type' => 'STRING'],
+                'level' => ['type' => 'STRING'],
+            ],
+            'writing' => [
+                'title' => ['type' => 'STRING'],
+                'prompt' => ['type' => 'STRING'],
+                'instructions' => ['type' => 'STRING'],
+                'min_words' => ['type' => 'INTEGER'],
+                'level' => ['type' => 'STRING'],
+            ],
+            'smart-abstract' => [
+                'title' => ['type' => 'STRING'],
+                'source_text' => ['type' => 'STRING'],
+                'instructions' => ['type' => 'STRING'],
+                'min_words' => ['type' => 'INTEGER'],
+                'max_words' => ['type' => 'INTEGER'],
+                'level' => ['type' => 'STRING'],
+            ],
+            default => throw new InvalidArgumentException("Unsupported exercise type: {$type}"),
+        };
+
+        return [
+            'type' => 'OBJECT',
+            'properties' => [
+                'exercises' => [
+                    'type' => 'ARRAY',
+                    'items' => [
+                        'type' => 'OBJECT',
+                        'properties' => $itemProperties,
+                        'required' => array_keys($itemProperties),
+                    ],
+                ],
+            ],
+            'required' => ['exercises'],
         ];
     }
 

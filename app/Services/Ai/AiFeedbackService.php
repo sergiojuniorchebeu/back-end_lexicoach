@@ -35,6 +35,65 @@ class AiFeedbackService
     }
 
     /**
+     * @param  array{level: string, language: string, count: int}  $params
+     * @return array<int, array<string, mixed>>
+     */
+    public function generateExercises(string $type, array $params): array
+    {
+        $exercises = $this->provider()->generateExercises($type, $params);
+
+        return collect($exercises)
+            ->map(fn (mixed $exercise): array => $this->normalizeGeneratedExercise(
+                is_array($exercise) ? $exercise : [],
+                $type,
+                $params,
+            ))
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @param  array<string, mixed>  $exercise
+     * @param  array{level: string, language: string, count: int}  $params
+     * @return array<string, mixed>
+     */
+    private function normalizeGeneratedExercise(array $exercise, string $type, array $params): array
+    {
+        $title = $this->stringFrom($exercise['title'] ?? '', 'Untitled exercise');
+        $level = $this->stringFrom($exercise['level'] ?? $params['level'], $params['level']);
+
+        return match ($type) {
+            'reading' => [
+                'title' => $title,
+                'text' => $this->stringFrom($exercise['text'] ?? '', 'Read this sentence aloud.'),
+                'language' => $params['language'],
+                'level' => $level,
+            ],
+            'writing' => [
+                'title' => $title,
+                'prompt' => $this->stringFrom($exercise['prompt'] ?? '', 'Write a few sentences.'),
+                'instructions' => $this->stringFrom($exercise['instructions'] ?? '', ''),
+                'min_words' => max(1, (int) ($exercise['min_words'] ?? 8)),
+                'language' => $params['language'],
+                'level' => $level,
+            ],
+            'smart-abstract' => [
+                'title' => $title,
+                'source_text' => $this->stringFrom($exercise['source_text'] ?? '', 'Document to summarize.'),
+                'instructions' => $this->stringFrom($exercise['instructions'] ?? '', ''),
+                'min_words' => max(1, (int) ($exercise['min_words'] ?? 15)),
+                'max_words' => max(
+                    (int) ($exercise['min_words'] ?? 15) + 1,
+                    (int) ($exercise['max_words'] ?? 40),
+                ),
+                'language' => $params['language'],
+                'level' => $level,
+            ],
+            default => throw new InvalidArgumentException("Unsupported exercise type: {$type}"),
+        };
+    }
+
+    /**
      * @param  array<int, array<string, string>>  $messages
      * @return array<string, mixed>
      */

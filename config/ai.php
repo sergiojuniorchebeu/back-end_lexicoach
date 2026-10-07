@@ -6,7 +6,14 @@ return [
     'conversation_debug_logs' => (bool) env('AI_CONVERSATION_DEBUG_LOGS', true),
 
     'gemini' => [
+        // Jusqu'a 4 cles : si l'une est a quota, GeminiKeyPool bascule sur
+        // la suivante automatiquement (voir app/Services/Ai/GeminiKeyPool.php).
+        // Gardees en entrees separees (plutot qu'un tableau precalcule) pour
+        // que Config::set('ai.gemini.api_key', ...) reste utilisable en test.
         'api_key' => env('GEMINI_API_KEY'),
+        'api_key_2' => env('GEMINI_API_KEY_2'),
+        'api_key_3' => env('GEMINI_API_KEY_3'),
+        'api_key_4' => env('GEMINI_API_KEY_4'),
         'model' => env('GEMINI_MODEL', 'gemini-3.5-flash-lite'),
         'live_model' => env('GEMINI_LIVE_MODEL', 'gemini-3.8-live'),
         'live_response_modality' => env('GEMINI_LIVE_RESPONSE_MODALITY', 'AUDIO'),

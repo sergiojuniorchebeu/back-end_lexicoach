@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\AdminDashboardController;
+use App\Http\Controllers\Api\AdminExerciseGenerationController;
 use App\Http\Controllers\Api\AdminUserController;
 use App\Http\Controllers\Api\AiConversationSessionController;
 use App\Http\Controllers\Api\ApiDocumentationController;
@@ -96,5 +97,6 @@ Route::middleware(['auth:sanctum', 'role:admin'])->group(function (): void {
     Route::get('/admin/users', [AdminUserController::class, 'index']);
     Route::get('/admin/users/{user}', [AdminUserController::class, 'show']);
     Route::patch('/admin/users/{user}/role', [AdminUserController::class, 'updateRole']);
-    Route::patch('/admin/users/{user}/conversation-limits', [AdminUserController::class, 'updateConversationLimits']);
+    Route::patch('/admin/users/{user}/status', [AdminUserController::class, 'updateStatus']);
+    Route::post('/admin/exercises/generate', [AdminExerciseGenerationController::class, 'generate']);
 });

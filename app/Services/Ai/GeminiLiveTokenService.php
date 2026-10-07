@@ -10,14 +10,16 @@ use RuntimeException;
 
 class GeminiLiveTokenService
 {
+    public function __construct(
+        private readonly GeminiKeyPool $keyPool = new GeminiKeyPool,
+    ) {}
+
     /**
      * @return array<string, mixed>|null
      */
     public function createForSession(AiConversationSession $session): ?array
     {
-        $apiKey = config('ai.gemini.api_key');
-
-        if (! is_string($apiKey) || $apiKey === '') {
+        if (! $this->keyPool->hasAnyKey()) {
             return null;
         }
 
@@ -27,17 +29,39 @@ class GeminiLiveTokenService
         $timeout = (int) config('ai.gemini.timeout');
         $expireAt = $this->tokenExpireAt($session);
 
-        try {
-            $response = Http::timeout($timeout)
-                ->acceptJson()
-                ->withHeaders(['x-goog-api-key' => $apiKey])
-                ->post("{$baseUrl}/auth_tokens", [
-                    'uses' => 1,
-                    'expireTime' => $expireAt->toISOString(),
-                    'newSessionExpireTime' => now()->addMinute()->toISOString(),
-                ]);
-        } catch (ConnectionException $exception) {
-            throw new RuntimeException('Gemini ephemeral token service is unreachable: '.$exception->getMessage(), previous: $exception);
+        $apiKey = $this->keyPool->currentKey();
+        $attemptsLeft = 2; // la cle courante, puis une seule bascule de secours
+
+        while (true) {
+            if ($apiKey === null) {
+                throw new RuntimeException('Toutes les cles Gemini sont epuisees.');
+            }
+
+            try {
+                $response = Http::timeout($timeout)
+                    ->acceptJson()
+                    ->withHeaders(['x-goog-api-key' => $apiKey])
+                    ->post("{$baseUrl}/auth_tokens", [
+                        'uses' => 1,
+                        'expireTime' => $expireAt->toISOString(),
+                        'newSessionExpireTime' => now()->addMinute()->toISOString(),
+                    ]);
+            } catch (ConnectionException $exception) {
+                throw new RuntimeException('Gemini ephemeral token service is unreachable: '.$exception->getMessage(), previous: $exception);
+            }
+
+            $attemptsLeft--;
+            $isQuotaExhausted = $response->status() === 429
+                || ($response->status() === 403 && str_contains($response->body(), 'RESOURCE_EXHAUSTED'));
+
+            if ($isQuotaExhausted && $attemptsLeft > 0) {
+                $this->keyPool->markExhausted($apiKey);
+                $apiKey = $this->keyPool->nextKeyAfter($apiKey);
+
+                continue;
+            }
+
+            break;
         }
 
         if ($response->failed()) {

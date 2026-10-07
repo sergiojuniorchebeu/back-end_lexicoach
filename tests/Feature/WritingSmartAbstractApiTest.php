@@ -296,4 +296,56 @@ class WritingSmartAbstractApiTest extends TestCase
         Http::assertSent(fn ($request): bool => $request->hasHeader('x-goog-api-key', 'test-gemini-key')
             && str_contains($request->url(), 'models/gemini-3.5-flash-lite:generateContent'));
     }
+
+    public function test_evaluation_falls_back_to_the_next_gemini_key_on_quota_exhaustion(): void
+    {
+        Config::set('ai.provider', 'gemini');
+        Config::set('ai.gemini.api_key', 'exhausted-key');
+        Config::set('ai.gemini.api_key_2', 'working-key');
+        Config::set('ai.gemini.model', 'gemini-3.5-flash-lite');
+
+        $successBody = [
+            'candidates' => [
+                [
+                    'content' => [
+                        'parts' => [
+                            [
+                                'text' => json_encode([
+                                    'score' => 88,
+                                    'status' => 'good',
+                                    'corrected_text' => 'Today I went to school.',
+                                    'mistakes' => [],
+                                    'suggestions' => [],
+                                    'feedback' => ['title' => 'Good work!', 'message' => 'Nice.'],
+                                ]),
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+        ];
+
+        // Meme URL pour les deux cles : la 1ere reponse simule un quota
+        // depasse (429), la 2nde (apres bascule de cle) reussit.
+        Http::fake([
+            'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent' => Http::sequence()
+                ->push(['error' => ['status' => 'RESOURCE_EXHAUSTED']], 429)
+                ->push($successBody, 200),
+        ]);
+
+        $learner = User::factory()->create();
+        $exercise = WritingExercise::factory()->create(['min_words' => 8]);
+
+        Sanctum::actingAs($learner);
+
+        $this->postJson("/api/writing-exercises/{$exercise->id}/evaluate", [
+            'answer' => 'Today I went to school and learned a new English word.',
+        ])
+            ->assertOk()
+            ->assertJsonPath('data.result.score', 88);
+
+        Http::assertSentCount(2);
+        Http::assertSent(fn ($request): bool => $request->hasHeader('x-goog-api-key', 'exhausted-key'));
+        Http::assertSent(fn ($request): bool => $request->hasHeader('x-goog-api-key', 'working-key'));
+    }
 }

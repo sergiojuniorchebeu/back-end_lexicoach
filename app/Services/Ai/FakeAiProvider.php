@@ -149,6 +149,44 @@ class FakeAiProvider implements AiProvider
         ];
     }
 
+    /**
+     * @param  array{level: string, language: string, count: int}  $params
+     * @return array<int, array<string, mixed>>
+     */
+    public function generateExercises(string $type, array $params): array
+    {
+        $level = $params['level'];
+        $count = $params['count'];
+
+        return collect(range(1, $count))->map(function (int $index) use ($type, $level): array {
+            $title = ucfirst($type)." draft #{$index} ({$level})";
+
+            return match ($type) {
+                'reading' => [
+                    'title' => $title,
+                    'text' => "This is a short {$level} level sentence for reading practice number {$index}.",
+                    'level' => $level,
+                ],
+                'writing' => [
+                    'title' => $title,
+                    'prompt' => "Write three sentences about your day ({$level} level, draft {$index}).",
+                    'instructions' => 'Use simple words and short sentences.',
+                    'min_words' => 8,
+                    'level' => $level,
+                ],
+                'smart-abstract' => [
+                    'title' => $title,
+                    'source_text' => "This is a short {$level} level document for summary practice number {$index}. It has one simple main idea.",
+                    'instructions' => 'Summarize the main idea in your own words.',
+                    'min_words' => 15,
+                    'max_words' => 40,
+                    'level' => $level,
+                ],
+                default => [],
+            };
+        })->filter()->values()->all();
+    }
+
     private function statusFromScore(int $score): string
     {
         if ($score >= 90) {

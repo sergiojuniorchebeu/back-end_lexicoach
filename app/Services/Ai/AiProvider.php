@@ -18,6 +18,14 @@ interface AiProvider
     public function evaluateSmartAbstract(SmartAbstractExercise $exercise, string $documentText): array;
 
     /**
+     * Generates $count new exercise drafts for the given type.
+     *
+     * @param  array{level: string, language: string, count: int}  $params
+     * @return array<int, array<string, mixed>>
+     */
+    public function generateExercises(string $type, array $params): array;
+
+    /**
      * @param  array<int, array<string, string>>  $messages
      * @return array<string, mixed>
      */

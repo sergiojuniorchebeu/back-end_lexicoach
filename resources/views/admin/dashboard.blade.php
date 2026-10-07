@@ -262,36 +262,62 @@
                 box-shadow: 0 0 0 5px rgba(101, 71, 232, .12);
             }
 
-            .table-wrap {
-                overflow-x: auto;
-                background: var(--surface);
+            .user-cards {
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+                gap: 14px;
+                padding: 16px;
             }
 
-            table {
+            .user-card {
+                display: grid;
+                gap: 12px;
+                border: 1px solid var(--primary-border);
+                border-radius: 22px;
+                background: var(--primary-pale);
+                padding: 16px;
+            }
+
+            .user-card-head {
+                display: flex;
+                justify-content: space-between;
+                align-items: start;
+                gap: 10px;
+            }
+
+            .user-card-footer {
+                display: grid;
+                gap: 8px;
+            }
+
+            .user-card-footer .button {
+                min-height: 42px;
                 width: 100%;
-                min-width: 980px;
-                border-collapse: collapse;
-                text-align: left;
-                font-size: 14px;
-            }
-
-            th {
-                background: var(--surface);
-                color: var(--muted);
-                font-size: 12px;
-                font-weight: 850;
-                padding: 13px 16px;
-                text-transform: uppercase;
-            }
-
-            td {
-                border-top: 1px solid var(--primary-border);
-                padding: 15px 16px;
-                vertical-align: top;
             }
 
             .name {
                 font-weight: 850;
+            }
+
+            .status-badge {
+                display: inline-flex;
+                align-items: center;
+                border-radius: 999px;
+                padding: 5px 11px;
+                font-size: 11px;
+                font-weight: 850;
+                text-transform: uppercase;
+                white-space: nowrap;
+            }
+
+            .status-active {
+                background: var(--green-soft);
+                color: #0F766E;
+            }
+
+            .status-suspended {
+                background: var(--red-soft);
+                color: #B42318;
             }
 
             .role {
@@ -370,28 +396,19 @@
                 background: var(--primary);
             }
 
-            .limit-controls {
+            .generate-result {
                 display: grid;
-                grid-template-columns: minmax(88px, 1fr) minmax(88px, 1fr);
                 gap: 8px;
-                min-width: 230px;
+                margin-top: 14px;
             }
 
-            .limit-controls label {
-                font-size: 11px;
-            }
-
-            .limit-controls input {
-                width: 100%;
-                min-height: 40px;
-                border-radius: 14px;
-                padding: 0 10px;
-            }
-
-            .limit-save {
-                grid-column: 1 / -1;
-                min-height: 40px;
-                border-radius: 14px;
+            .generate-result-item {
+                border: 1px solid var(--primary-border);
+                border-radius: 16px;
+                background: var(--primary-pale);
+                padding: 10px 13px;
+                font-size: 13px;
+                font-weight: 800;
             }
 
             .empty {
@@ -469,24 +486,44 @@
                                 <button class="button" id="filter-users">Filtrer</button>
                             </div>
                         </div>
-                        <div class="table-wrap">
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>Compte</th>
-                                        <th>Role</th>
-                                        <th>Activite</th>
-                                        <th>Conversation IA</th>
-                                        <th>Modifier</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="users-body"></tbody>
-                            </table>
-                        </div>
+                        <div class="user-cards" id="users-body"></div>
                         <div class="empty" id="users-empty" hidden>Aucun utilisateur ne correspond au filtre.</div>
                     </div>
 
                     <aside style="display: grid; gap: 18px;">
+                        <section class="panel activity">
+                            <h2>Generer des exercices</h2>
+                            <p class="muted">Creation de nouveaux exercices par IA.</p>
+                            <div class="side-list" style="margin-top: 14px;">
+                                <label>
+                                    Mode
+                                    <select id="generate-type">
+                                        <option value="reading">Reading</option>
+                                        <option value="writing">Writing</option>
+                                        <option value="smart-abstract">Smart Abstract</option>
+                                    </select>
+                                </label>
+                                <label>
+                                    Niveau
+                                    <select id="generate-level">
+                                        <option value="beginner">Beginner</option>
+                                        <option value="intermediate">Intermediate</option>
+                                        <option value="advanced">Advanced</option>
+                                    </select>
+                                </label>
+                                <label>
+                                    Langue
+                                    <input id="generate-language" type="text" value="en-US">
+                                </label>
+                                <label>
+                                    Nombre
+                                    <input id="generate-count" type="number" min="1" max="10" value="3">
+                                </label>
+                                <button class="button button-primary" id="generate-button">Generer</button>
+                            </div>
+                            <div class="generate-result" id="generate-result" hidden></div>
+                        </section>
+
                         <section class="panel activity">
                             <h2>Repartition</h2>
                             <div class="side-list" id="roles-breakdown"></div>
@@ -515,6 +552,7 @@
                 usersEmpty: document.getElementById('users-empty'),
                 rolesBreakdown: document.getElementById('roles-breakdown'),
                 recentAttempts: document.getElementById('recent-attempts'),
+                generateResult: document.getElementById('generate-result'),
             };
 
             document.getElementById('logout').addEventListener('click', () => {
@@ -524,6 +562,10 @@
 
             document.getElementById('refresh-dashboard').addEventListener('click', () => {
                 loadAdminArea();
+            });
+
+            document.getElementById('generate-button').addEventListener('click', () => {
+                generateExercises();
             });
 
             document.getElementById('filter-users').addEventListener('click', () => {
@@ -634,109 +676,91 @@
                 elements.usersEmpty.hidden = users.length !== 0;
                 elements.usersBody.innerHTML = users
                     .map((user) => {
-                        const limits = user.conversation_limits || {};
-                        const sessionMinutes = limits.session_limit_minutes || 3;
-                        const dailyLimit = limits.daily_session_limit ?? 3;
+                        const isSuspended = user.status === 'suspended';
 
                         return `
-                        <tr>
-                            <td>
-                                <div class="name">${escapeHtml(user.full_name)}</div>
-                                <div class="muted">${escapeHtml(user.email)}</div>
-                            </td>
-                            <td><span class="role role-${user.role}">${user.role}</span></td>
-                            <td class="muted">
+                        <article class="user-card">
+                            <div class="user-card-head">
+                                <div>
+                                    <div class="name">${escapeHtml(user.full_name)}</div>
+                                    <div class="muted">${escapeHtml(user.email)}</div>
+                                </div>
+                                <span class="role role-${user.role}">${user.role}</span>
+                            </div>
+                            <div class="muted">
                                 <div>${user.reading_attempts_count || 0} attempts</div>
                                 <div>${user.learners_count || 0} learners, ${user.tutors_count || 0} tutors</div>
-                            </td>
-                            <td>
-                                <div class="limit-controls">
-                                    <label>
-                                        Min/session
-                                        <input type="number" min="1" max="60" value="${sessionMinutes}" data-user-id="${user.id}" data-limit-field="session-minutes">
-                                    </label>
-                                    <label>
-                                        Sessions/jour
-                                        <input type="number" min="0" max="100" value="${dailyLimit}" data-user-id="${user.id}" data-limit-field="daily-limit">
-                                    </label>
-                                    <button class="button limit-save" data-user-id="${user.id}">Enregistrer</button>
-                                </div>
-                            </td>
-                            <td>
-                                <select data-user-id="${user.id}" data-current-role="${user.role}" class="role-select">
-                                    <option value="learner" ${user.role === 'learner' ? 'selected' : ''}>Learner</option>
-                                    <option value="tutor" ${user.role === 'tutor' ? 'selected' : ''}>Tutor</option>
-                                    <option value="admin" ${user.role === 'admin' ? 'selected' : ''}>Admin</option>
-                                </select>
-                            </td>
-                        </tr>
+                            </div>
+                            <span class="status-badge ${isSuspended ? 'status-suspended' : 'status-active'}">${isSuspended ? 'Suspendu' : 'Actif'}</span>
+                            <div class="user-card-footer">
+                                <button class="button status-toggle" data-user-id="${user.id}" data-next-status="${isSuspended ? 'active' : 'suspended'}">
+                                    ${isSuspended ? 'Reactiver' : 'Suspendre'}
+                                </button>
+                            </div>
+                        </article>
                     `;
                     })
                     .join('');
 
-                document.querySelectorAll('.role-select').forEach((select) => {
-                    select.addEventListener('change', async (event) => {
-                        const field = event.target;
-                        await updateUserRole(field.dataset.userId, field.value, field);
-                    });
-                });
-
-                document.querySelectorAll('.limit-save').forEach((button) => {
+                document.querySelectorAll('.status-toggle').forEach((button) => {
                     button.addEventListener('click', async (event) => {
-                        await updateConversationLimits(event.target.dataset.userId, event.target);
+                        const field = event.target;
+                        await updateUserStatus(field.dataset.userId, field.dataset.nextStatus);
                     });
                 });
             }
 
-            async function updateUserRole(userId, role, field) {
+            async function updateUserStatus(userId, nextStatus) {
                 setLoading(true);
                 showNotice('');
 
                 try {
-                    await apiRequest(`/admin/users/${userId}/role`, {
+                    await apiRequest(`/admin/users/${userId}/status`, {
                         method: 'PATCH',
                         token,
-                        body: JSON.stringify({ role }),
+                        body: JSON.stringify({ status: nextStatus }),
                     });
-                    await loadAdminArea();
+                    showNotice(nextStatus === 'suspended' ? 'Compte suspendu.' : 'Compte reactive.');
+                    await loadUsers();
                 } catch (error) {
-                    field.value = field.dataset.currentRole;
-                    showNotice(error.message || 'Impossible de changer le role.');
+                    showNotice(error.message || 'Impossible de modifier le statut.');
                 } finally {
                     setLoading(false);
                 }
             }
 
-            async function updateConversationLimits(userId, button) {
-                const sessionInput = document.querySelector(`[data-user-id="${userId}"][data-limit-field="session-minutes"]`);
-                const dailyInput = document.querySelector(`[data-user-id="${userId}"][data-limit-field="daily-limit"]`);
-                const sessionMinutes = Number.parseInt(sessionInput.value, 10);
-                const dailyLimit = Number.parseInt(dailyInput.value, 10);
+            async function generateExercises() {
+                const type = document.getElementById('generate-type').value;
+                const level = document.getElementById('generate-level').value;
+                const language = document.getElementById('generate-language').value.trim();
+                const count = Number.parseInt(document.getElementById('generate-count').value, 10);
 
-                if (!Number.isFinite(sessionMinutes) || !Number.isFinite(dailyLimit)) {
-                    showNotice('Les limites doivent etre des nombres.');
+                if (language === '' || !Number.isFinite(count)) {
+                    showNotice('Langue et nombre sont requis.');
                     return;
                 }
 
                 setLoading(true);
-                button.disabled = true;
                 showNotice('');
+                elements.generateResult.hidden = true;
 
                 try {
-                    await apiRequest(`/admin/users/${userId}/conversation-limits`, {
-                        method: 'PATCH',
+                    const response = await apiRequest('/admin/exercises/generate', {
+                        method: 'POST',
                         token,
-                        body: JSON.stringify({
-                            ai_conversation_session_limit_seconds: sessionMinutes * 60,
-                            ai_conversation_daily_session_limit: dailyLimit,
-                        }),
+                        body: JSON.stringify({ type, level, language, count }),
                     });
-                    showNotice('Limites conversation IA mises a jour.');
-                    await loadUsers();
+
+                    const exercises = response.data.exercises || [];
+                    elements.generateResult.hidden = exercises.length === 0;
+                    elements.generateResult.innerHTML = exercises
+                        .map((exercise) => `<div class="generate-result-item">${escapeHtml(exercise.title)}</div>`)
+                        .join('');
+                    showNotice(`${exercises.length} exercice(s) genere(s).`);
+                    await loadAdminArea();
                 } catch (error) {
-                    showNotice(error.message || 'Impossible de modifier les limites.');
+                    showNotice(error.message || 'Impossible de generer des exercices.');
                 } finally {
-                    button.disabled = false;
                     setLoading(false);
                 }
             }

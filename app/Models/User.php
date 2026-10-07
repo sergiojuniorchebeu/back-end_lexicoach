@@ -21,6 +21,7 @@ use Laravel\Sanctum\HasApiTokens;
  * @property Carbon|null $email_verified_at
  * @property string $password
  * @property string $role
+ * @property string $status
  * @property string $preferred_language
  * @property string $learning_level
  * @property int $dyslexia_font_size
@@ -36,6 +37,7 @@ use Laravel\Sanctum\HasApiTokens;
     'email',
     'password',
     'role',
+    'status',
     'preferred_language',
     'learning_level',
     'dyslexia_font_size',
@@ -52,6 +54,10 @@ class User extends Authenticatable
 
     public const ROLE_ADMIN = 'admin';
 
+    public const STATUS_ACTIVE = 'active';
+
+    public const STATUS_SUSPENDED = 'suspended';
+
     /** @use HasFactory<UserFactory> */
     use HasApiTokens, HasFactory, Notifiable;
 
@@ -65,6 +71,22 @@ class User extends Authenticatable
             self::ROLE_TUTOR,
             self::ROLE_ADMIN,
         ];
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    public static function statuses(): array
+    {
+        return [
+            self::STATUS_ACTIVE,
+            self::STATUS_SUSPENDED,
+        ];
+    }
+
+    public function isSuspended(): bool
+    {
+        return $this->status === self::STATUS_SUSPENDED;
     }
 
     /**

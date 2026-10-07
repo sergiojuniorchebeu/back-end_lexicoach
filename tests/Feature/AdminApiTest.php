@@ -83,9 +83,7 @@ class AdminApiTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.user.full_name', 'Marie Learner')
             ->assertJsonPath('data.user.role', User::ROLE_LEARNER)
-            ->assertJsonPath('data.user.conversation_limits.session_limit_seconds', 180)
-            ->assertJsonPath('data.user.conversation_limits.session_limit_minutes', 3)
-            ->assertJsonPath('data.user.conversation_limits.daily_session_limit', 3);
+            ->assertJsonPath('data.user.status', User::STATUS_ACTIVE);
 
         $this->patchJson("/api/admin/users/{$learner->id}/role", [
             'role' => User::ROLE_TUTOR,
@@ -99,45 +97,87 @@ class AdminApiTest extends TestCase
         ]);
     }
 
-    public function test_admin_can_update_user_conversation_limits(): void
+    public function test_admin_can_suspend_and_reactivate_user(): void
     {
         $admin = User::factory()->admin()->create();
         $learner = User::factory()->create();
+        $learner->createToken('mobile');
 
         Sanctum::actingAs($admin);
 
-        $this->patchJson("/api/admin/users/{$learner->id}/conversation-limits", [
-            'ai_conversation_session_limit_seconds' => 300,
-            'ai_conversation_daily_session_limit' => 5,
+        $this->patchJson("/api/admin/users/{$learner->id}/status", [
+            'status' => User::STATUS_SUSPENDED,
         ])
             ->assertOk()
-            ->assertJsonPath('data.user.conversation_limits.session_limit_seconds', 300)
-            ->assertJsonPath('data.user.conversation_limits.session_limit_minutes', 5)
-            ->assertJsonPath('data.user.conversation_limits.daily_session_limit', 5);
+            ->assertJsonPath('data.user.status', User::STATUS_SUSPENDED);
 
         $this->assertDatabaseHas('users', [
             'id' => $learner->id,
-            'ai_conversation_session_limit_seconds' => 300,
-            'ai_conversation_daily_session_limit' => 5,
+            'status' => User::STATUS_SUSPENDED,
         ]);
+
+        // Un token deja emis avant la suspension est revoque.
+        $this->assertSame(0, $learner->tokens()->count());
+
+        $this->patchJson("/api/admin/users/{$learner->id}/status", [
+            'status' => User::STATUS_ACTIVE,
+        ])
+            ->assertOk()
+            ->assertJsonPath('data.user.status', User::STATUS_ACTIVE);
     }
 
-    public function test_admin_conversation_limits_are_validated(): void
+    public function test_suspended_status_blocks_requests_even_with_a_still_valid_token(): void
+    {
+        $learner = User::factory()->create();
+        $token = $learner->createToken('mobile')->plainTextToken;
+
+        // Suspension directe (sans passer par l'admin, donc sans revocation
+        // de token) : c'est EnsureAccountIsActive seul qui doit bloquer.
+        $learner->update(['status' => User::STATUS_SUSPENDED]);
+
+        $this->withHeader('Authorization', "Bearer {$token}")
+            ->getJson('/api/auth/me')
+            ->assertForbidden();
+    }
+
+    public function test_suspended_user_cannot_login(): void
+    {
+        $learner = User::factory()->create([
+            'status' => User::STATUS_SUSPENDED,
+        ]);
+
+        $this->postJson('/api/auth/login', [
+            'email' => $learner->email,
+            'password' => 'password',
+        ])
+            ->assertForbidden();
+    }
+
+    public function test_admin_cannot_suspend_own_account(): void
+    {
+        $admin = User::factory()->admin()->create();
+
+        Sanctum::actingAs($admin);
+
+        $this->patchJson("/api/admin/users/{$admin->id}/status", [
+            'status' => User::STATUS_SUSPENDED,
+        ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['status']);
+    }
+
+    public function test_admin_status_update_is_validated(): void
     {
         $admin = User::factory()->admin()->create();
         $learner = User::factory()->create();
 
         Sanctum::actingAs($admin);
 
-        $this->patchJson("/api/admin/users/{$learner->id}/conversation-limits", [
-            'ai_conversation_session_limit_seconds' => 30,
-            'ai_conversation_daily_session_limit' => 101,
+        $this->patchJson("/api/admin/users/{$learner->id}/status", [
+            'status' => 'banned',
         ])
             ->assertUnprocessable()
-            ->assertJsonValidationErrors([
-                'ai_conversation_session_limit_seconds',
-                'ai_conversation_daily_session_limit',
-            ]);
+            ->assertJsonValidationErrors(['status']);
     }
 
     public function test_admin_cannot_remove_own_admin_role(): void
@@ -163,9 +203,8 @@ class AdminApiTest extends TestCase
 
         Sanctum::actingAs($tutor);
         $this->getJson('/api/admin/users')->assertForbidden();
-        $this->patchJson("/api/admin/users/{$learner->id}/conversation-limits", [
-            'ai_conversation_session_limit_seconds' => 300,
-            'ai_conversation_daily_session_limit' => 5,
+        $this->patchJson("/api/admin/users/{$learner->id}/status", [
+            'status' => User::STATUS_SUSPENDED,
         ])->assertForbidden();
     }
 
