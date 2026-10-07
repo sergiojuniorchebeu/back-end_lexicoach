@@ -287,6 +287,7 @@
 
             .user-card-footer {
                 display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
                 gap: 8px;
             }
 
@@ -316,6 +317,11 @@
             }
 
             .status-suspended {
+                background: var(--orange-soft);
+                color: #9A5B00;
+            }
+
+            .status-blocked {
                 background: var(--red-soft);
                 color: #B42318;
             }
@@ -672,11 +678,42 @@
                     .join('');
             }
 
+            const STATUS_LABELS = {
+                active: 'Actif',
+                suspended: 'Suspendu',
+                blocked: 'Bloque',
+            };
+
+            function statusActionsFor(status) {
+                if (status === 'blocked') {
+                    return [{ label: 'Reactiver', next: 'active' }];
+                }
+
+                if (status === 'suspended') {
+                    return [
+                        { label: 'Reactiver', next: 'active' },
+                        { label: 'Bloquer', next: 'blocked' },
+                    ];
+                }
+
+                return [
+                    { label: 'Suspendre', next: 'suspended' },
+                    { label: 'Bloquer', next: 'blocked' },
+                ];
+            }
+
             function renderUsers(users) {
                 elements.usersEmpty.hidden = users.length !== 0;
                 elements.usersBody.innerHTML = users
                     .map((user) => {
-                        const isSuspended = user.status === 'suspended';
+                        const status = user.status || 'active';
+                        const actionsHtml = statusActionsFor(status)
+                            .map((action) => `
+                                <button class="button status-toggle" data-user-id="${user.id}" data-next-status="${action.next}">
+                                    ${action.label}
+                                </button>
+                            `)
+                            .join('');
 
                         return `
                         <article class="user-card">
@@ -691,12 +728,8 @@
                                 <div>${user.reading_attempts_count || 0} attempts</div>
                                 <div>${user.learners_count || 0} learners, ${user.tutors_count || 0} tutors</div>
                             </div>
-                            <span class="status-badge ${isSuspended ? 'status-suspended' : 'status-active'}">${isSuspended ? 'Suspendu' : 'Actif'}</span>
-                            <div class="user-card-footer">
-                                <button class="button status-toggle" data-user-id="${user.id}" data-next-status="${isSuspended ? 'active' : 'suspended'}">
-                                    ${isSuspended ? 'Reactiver' : 'Suspendre'}
-                                </button>
-                            </div>
+                            <span class="status-badge status-${status}">${STATUS_LABELS[status] || status}</span>
+                            <div class="user-card-footer">${actionsHtml}</div>
                         </article>
                     `;
                     })

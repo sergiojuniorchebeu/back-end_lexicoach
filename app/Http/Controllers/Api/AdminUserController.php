@@ -91,10 +91,13 @@ class AdminUserController extends Controller
         ]);
 
         $admin = $request->user();
+        $isSelfLockout = $admin instanceof User
+            && $admin->is($user)
+            && in_array($validated['status'], [User::STATUS_SUSPENDED, User::STATUS_BLOCKED], true);
 
-        if ($admin instanceof User && $admin->is($user) && $validated['status'] === User::STATUS_SUSPENDED) {
+        if ($isSelfLockout) {
             throw ValidationException::withMessages([
-                'status' => ['Un admin ne peut pas suspendre son propre compte.'],
+                'status' => ['Un admin ne peut pas suspendre ou bloquer son propre compte.'],
             ]);
         }
 
@@ -102,7 +105,7 @@ class AdminUserController extends Controller
             'status' => $validated['status'],
         ]);
 
-        if ($validated['status'] === User::STATUS_SUSPENDED) {
+        if ($validated['status'] !== User::STATUS_ACTIVE) {
             $user->tokens()->delete();
         }
 

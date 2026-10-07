@@ -126,6 +126,73 @@ class AdminApiTest extends TestCase
             ->assertJsonPath('data.user.status', User::STATUS_ACTIVE);
     }
 
+    public function test_admin_can_block_and_reactivate_user(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $learner = User::factory()->create();
+        $learner->createToken('mobile');
+
+        Sanctum::actingAs($admin);
+
+        $this->patchJson("/api/admin/users/{$learner->id}/status", [
+            'status' => User::STATUS_BLOCKED,
+        ])
+            ->assertOk()
+            ->assertJsonPath('data.user.status', User::STATUS_BLOCKED);
+
+        $this->assertDatabaseHas('users', [
+            'id' => $learner->id,
+            'status' => User::STATUS_BLOCKED,
+        ]);
+
+        // Un token deja emis avant le blocage est revoque, comme pour une suspension.
+        $this->assertSame(0, $learner->tokens()->count());
+
+        $this->patchJson("/api/admin/users/{$learner->id}/status", [
+            'status' => User::STATUS_ACTIVE,
+        ])
+            ->assertOk()
+            ->assertJsonPath('data.user.status', User::STATUS_ACTIVE);
+    }
+
+    public function test_blocked_status_blocks_requests_even_with_a_still_valid_token(): void
+    {
+        $learner = User::factory()->create();
+        $token = $learner->createToken('mobile')->plainTextToken;
+
+        $learner->update(['status' => User::STATUS_BLOCKED]);
+
+        $this->withHeader('Authorization', "Bearer {$token}")
+            ->getJson('/api/auth/me')
+            ->assertForbidden();
+    }
+
+    public function test_blocked_user_cannot_login(): void
+    {
+        $learner = User::factory()->create([
+            'status' => User::STATUS_BLOCKED,
+        ]);
+
+        $this->postJson('/api/auth/login', [
+            'email' => $learner->email,
+            'password' => 'password',
+        ])
+            ->assertForbidden();
+    }
+
+    public function test_admin_cannot_block_own_account(): void
+    {
+        $admin = User::factory()->admin()->create();
+
+        Sanctum::actingAs($admin);
+
+        $this->patchJson("/api/admin/users/{$admin->id}/status", [
+            'status' => User::STATUS_BLOCKED,
+        ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['status']);
+    }
+
     public function test_suspended_status_blocks_requests_even_with_a_still_valid_token(): void
     {
         $learner = User::factory()->create();

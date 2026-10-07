@@ -58,6 +58,19 @@ class User extends Authenticatable
 
     public const STATUS_SUSPENDED = 'suspended';
 
+    public const STATUS_BLOCKED = 'blocked';
+
+    /**
+     * Mirrors the DB column default so a freshly-built in-memory instance
+     * (before any round-trip to the database) already reports as active,
+     * instead of leaving `status` null until the row is refetched.
+     *
+     * @var array<string, mixed>
+     */
+    protected $attributes = [
+        'status' => self::STATUS_ACTIVE,
+    ];
+
     /** @use HasFactory<UserFactory> */
     use HasApiTokens, HasFactory, Notifiable;
 
@@ -81,12 +94,28 @@ class User extends Authenticatable
         return [
             self::STATUS_ACTIVE,
             self::STATUS_SUSPENDED,
+            self::STATUS_BLOCKED,
         ];
     }
 
     public function isSuspended(): bool
     {
         return $this->status === self::STATUS_SUSPENDED;
+    }
+
+    public function isBlocked(): bool
+    {
+        return $this->status === self::STATUS_BLOCKED;
+    }
+
+    /**
+     * Suspended and blocked both deny access entirely; they only differ in
+     * intent (suspended = temporary/self-correctable, blocked = a harder,
+     * more deliberate admin decision).
+     */
+    public function isActive(): bool
+    {
+        return $this->status === self::STATUS_ACTIVE;
     }
 
     /**
