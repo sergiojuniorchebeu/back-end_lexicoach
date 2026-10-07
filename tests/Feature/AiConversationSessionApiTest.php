@@ -33,14 +33,14 @@ class AiConversationSessionApiTest extends TestCase
             ->assertCreated()
             ->assertJsonPath('success', true)
             ->assertJsonPath('data.session.status', AiConversationSession::STATUS_ACTIVE)
-            ->assertJsonPath('data.session.session_limit_seconds', 180)
+            ->assertJsonPath('data.session.session_limit_seconds', 14400)
             ->assertJsonPath('data.quota.daily_session_limit', 3)
             ->assertJsonPath('data.quota.daily_sessions_used', 1)
             ->assertJsonPath('data.quota.daily_sessions_remaining', 2);
 
         $this->assertDatabaseHas('ai_conversation_sessions', [
             'user_id' => $learner->id,
-            'session_limit_seconds' => 180,
+            'session_limit_seconds' => 14400,
             'status' => AiConversationSession::STATUS_ACTIVE,
         ]);
     }
@@ -95,8 +95,11 @@ class AiConversationSessionApiTest extends TestCase
         $this->assertDatabaseCount('ai_conversation_sessions', 1);
     }
 
-    public function test_learner_cannot_start_when_daily_limit_is_disabled(): void
+    public function test_learner_can_start_even_with_daily_limit_set_to_zero(): void
     {
+        // Les limites de sessions IA ont ete volontairement supprimees :
+        // la colonne existe encore (reglage admin legacy) mais n'est plus
+        // appliquee nulle part.
         $learner = User::factory()->create([
             'ai_conversation_daily_session_limit' => 0,
         ]);
@@ -104,11 +107,11 @@ class AiConversationSessionApiTest extends TestCase
         Sanctum::actingAs($learner);
 
         $this->postJson('/api/ai-conversations')
-            ->assertUnprocessable()
-            ->assertJsonValidationErrors(['ai_conversation_daily_session_limit']);
+            ->assertCreated()
+            ->assertJsonPath('success', true);
     }
 
-    public function test_learner_cannot_exceed_daily_session_limit(): void
+    public function test_learner_can_start_beyond_daily_session_limit(): void
     {
         $learner = User::factory()->create([
             'ai_conversation_daily_session_limit' => 1,
@@ -126,8 +129,8 @@ class AiConversationSessionApiTest extends TestCase
         Sanctum::actingAs($learner);
 
         $this->postJson('/api/ai-conversations')
-            ->assertUnprocessable()
-            ->assertJsonValidationErrors(['ai_conversation_daily_session_limit']);
+            ->assertCreated()
+            ->assertJsonPath('success', true);
     }
 
     public function test_learner_can_end_their_active_session(): void

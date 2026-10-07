@@ -600,7 +600,7 @@
                     metricCard('Utilisateurs', dashboard.users.total, `${dashboard.users.learners} learners, ${dashboard.users.tutors} tutors`, 'U'),
                     metricCard('Reading attempts', dashboard.learning.reading_attempts, `${dashboard.learning.average_reading_score}% de moyenne`, 'R'),
                     metricCard('Writing attempts', dashboard.learning.writing_attempts || 0, `${dashboard.learning.average_writing_score || 0}% de moyenne`, 'W'),
-                    metricCard('Smart abstract', dashboard.learning.smart_abstract_attempts || 0, `${dashboard.learning.average_smart_abstract_score || 0}% de moyenne`, 'A'),
+                    metricCard('Smart abstract', dashboard.learning.smart_abstract_attempts || 0, `${dashboard.learning.smart_abstract_exercises || 0} documents disponibles`, 'A'),
                     metricCard('Associations', dashboard.tutor_view.linked_pairs, `${dashboard.tutor_view.tutors_with_learners} tutors actifs`, 'L'),
                 ].join('');
 

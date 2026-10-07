@@ -45,6 +45,9 @@ class FakeAiProvider implements AiProvider
     }
 
     /**
+     * Summarizes the document. This never grades the learner: there is no
+     * score, no "mistakes" and no judgement, only a summary of the text.
+     *
      * @return array<string, mixed>
      */
     public function evaluateSmartAbstract(SmartAbstractExercise $exercise, string $documentText): array
@@ -54,24 +57,14 @@ class FakeAiProvider implements AiProvider
             ->take(max($exercise->min_words, min($exercise->max_words, 45)))
             ->implode(' ');
         $summary = Str::finish($summary, '.');
-        $score = str_word_count($documentText) >= $exercise->min_words ? 82 : 62;
+
+        $sentences = array_values(array_filter(
+            array_map('trim', preg_split('/(?<=[.!?])\s+/', trim($documentText)) ?: []),
+        ));
 
         return [
-            'score' => $score,
-            'status' => $this->statusFromScore($score),
-            'improved_summary' => $summary,
-            'missing_ideas' => $score >= 75 ? [] : [
-                'Add a longer document so the app can find the main idea.',
-            ],
-            'strengths' => [
-                'The summary is short and readable.',
-            ],
-            'feedback' => [
-                'title' => $score >= 75 ? 'Summary ready!' : 'Add more text.',
-                'message' => $score >= 75
-                    ? 'The document was summarized with simple words.'
-                    : 'Paste a longer document so the summary can be more useful.',
-            ],
+            'summary' => $summary,
+            'key_points' => array_slice($sentences, 0, 3),
             'raw_ai_response' => [
                 'provider' => 'fake',
                 'note' => 'Deterministic local response used when no AI key is configured.',

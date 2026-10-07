@@ -87,26 +87,37 @@ class AiFeedbackService
     }
 
     /**
+     * Normalizes a pure summary of the document. This never grades the
+     * learner - there is no score and no evaluation, only the AI's summary
+     * of the text and its key points. The `score`/`status` fields are kept
+     * as fixed, non-evaluative values purely for storage/dashboard
+     * compatibility with the other (actually graded) exercise types.
+     *
      * @param  array<string, mixed>  $result
      * @return array<string, mixed>
      */
     private function normalizeSmartAbstract(array $result, string $documentText): array
     {
-        $score = $this->scoreFrom($result['score'] ?? 0);
         $summary = $this->stringFrom(
-            $result['improved_summary'] ?? $result['summary'] ?? '',
+            $result['summary'] ?? $result['improved_summary'] ?? '',
             'This document has been summarized in simple words.',
         );
+        $keyPoints = $this->arrayFrom($result['key_points'] ?? []);
 
         return [
-            'score' => $score,
-            'status' => $this->statusFrom($result['status'] ?? null, $score),
+            'score' => 100,
+            'status' => 'good',
             'document_text' => $documentText,
             'summary' => $summary,
             'improved_summary' => $summary,
-            'missing_ideas' => $this->arrayFrom($result['missing_ideas'] ?? []),
-            'strengths' => $this->arrayFrom($result['strengths'] ?? []),
-            'feedback' => $this->feedbackFrom($result['feedback'] ?? null, $score),
+            'missing_ideas' => [],
+            'strengths' => $keyPoints,
+            'feedback' => [
+                'title' => 'Summary ready',
+                'message' => $keyPoints !== []
+                    ? 'Here is your summary, with the key points from your document.'
+                    : 'Here is your summary.',
+            ],
             'raw_ai_response' => $result['raw_ai_response'] ?? $result,
         ];
     }

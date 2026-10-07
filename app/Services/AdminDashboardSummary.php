@@ -51,11 +51,11 @@ class AdminDashboardSummary
                 'average_writing_score' => $totalWritingAttempts > 0
                     ? (int) round((float) WritingExerciseAttempt::query()->avg('score'))
                     : 0,
+                // Smart Abstract n'est jamais note (l'IA resume, elle ne
+                // juge pas l'apprenant) : pas de score ici, seulement un
+                // volume de resumes generes.
                 'smart_abstract_exercises' => SmartAbstractExercise::query()->count(),
                 'smart_abstract_attempts' => $totalSmartAbstractAttempts,
-                'average_smart_abstract_score' => $totalSmartAbstractAttempts > 0
-                    ? (int) round((float) SmartAbstractAttempt::query()->avg('score'))
-                    : 0,
             ],
             'tutor_view' => [
                 'linked_pairs' => DB::table('tutor_learners')->count(),

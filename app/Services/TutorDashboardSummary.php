@@ -33,7 +33,7 @@ class TutorDashboardSummary
             'active_learners' => $this->activeLearnersCount($learners),
             'reading' => $this->readingOverview($learners),
             'writing' => $this->attemptOverview($learners, WritingExerciseAttempt::class, 'writingExercise'),
-            'smart_abstract' => $this->attemptOverview($learners, SmartAbstractAttempt::class, 'smartAbstractExercise'),
+            'smart_abstract' => $this->attemptOverview($learners, SmartAbstractAttempt::class, 'smartAbstractExercise', scored: false),
             'progress_by_mode' => $this->progressByMode($learners),
         ];
     }
@@ -189,6 +189,17 @@ class TutorDashboardSummary
     }
 
     /**
+     * @return array<string, mixed>
+     */
+    private function emptyUnscoredSummary(): array
+    {
+        return [
+            'total_attempts' => 0,
+            'latest_attempts' => [],
+        ];
+    }
+
+    /**
      * @param  Collection<int, User>  $learners
      * @return array<string, mixed>
      */
@@ -199,7 +210,7 @@ class TutorDashboardSummary
         }
 
         if ($slug === LearningMode::SLUG_SMART_ABSTRACT) {
-            return $this->attemptOverview($learners, SmartAbstractAttempt::class, 'smartAbstractExercise');
+            return $this->attemptOverview($learners, SmartAbstractAttempt::class, 'smartAbstractExercise', scored: false);
         }
 
         return $this->emptyAggregateSummary();
@@ -208,57 +219,73 @@ class TutorDashboardSummary
     /**
      * @param  Collection<int, User>  $learners
      * @param  class-string<WritingExerciseAttempt|SmartAbstractAttempt>  $attemptClass
+     * @param  bool  $scored  Smart Abstract is never graded (the AI only
+     *                        summarizes), so it has no average/best score.
      * @return array<string, mixed>
      */
-    private function attemptOverview(Collection $learners, string $attemptClass, string $exerciseRelation): array
+    private function attemptOverview(Collection $learners, string $attemptClass, string $exerciseRelation, bool $scored = true): array
     {
         $learnerIds = $learners->pluck('id')->all();
 
         if ($learnerIds === []) {
-            return $this->emptyAggregateSummary();
+            return $scored ? $this->emptyAggregateSummary() : $this->emptyUnscoredSummary();
         }
 
         $attemptsQuery = $attemptClass::query()
             ->whereIn('user_id', $learnerIds);
         $totalAttempts = (clone $attemptsQuery)->count();
 
+        $latestAttempts = $attemptClass::query()
+            ->with([$exerciseRelation, 'user'])
+            ->whereIn('user_id', $learnerIds)
+            ->latest()
+            ->limit(5)
+            ->get()
+            ->map(fn (WritingExerciseAttempt|SmartAbstractAttempt $attempt): array => $this->formatAiAttempt($attempt, $exerciseRelation, $scored))
+            ->all();
+
+        if (! $scored) {
+            return [
+                'total_attempts' => $totalAttempts,
+                'latest_attempts' => $latestAttempts,
+            ];
+        }
+
         return [
             'total_attempts' => $totalAttempts,
             'average_score' => $totalAttempts > 0 ? (int) round((float) (clone $attemptsQuery)->avg('score')) : 0,
             'best_score' => $totalAttempts > 0 ? (int) (clone $attemptsQuery)->max('score') : 0,
-            'latest_attempts' => $attemptClass::query()
-                ->with([$exerciseRelation, 'user'])
-                ->whereIn('user_id', $learnerIds)
-                ->latest()
-                ->limit(5)
-                ->get()
-                ->map(fn (WritingExerciseAttempt|SmartAbstractAttempt $attempt): array => $this->formatAiAttempt($attempt, $exerciseRelation))
-                ->all(),
+            'latest_attempts' => $latestAttempts,
         ];
     }
 
     /**
      * @return array<string, mixed>
      */
-    private function formatAiAttempt(WritingExerciseAttempt|SmartAbstractAttempt $attempt, string $exerciseRelation): array
+    private function formatAiAttempt(WritingExerciseAttempt|SmartAbstractAttempt $attempt, string $exerciseRelation, bool $scored = true): array
     {
         $exercise = $attempt->{$exerciseRelation};
 
+        $formatted = [
+            'id' => $attempt->id,
+            'exercise' => [
+                'id' => $exercise->id,
+                'title' => $exercise->title,
+                'language' => $exercise->language,
+                'level' => $exercise->level,
+            ],
+            'created_at' => $attempt->created_at,
+        ];
+
+        if ($scored) {
+            $formatted['score'] = $attempt->score;
+            $formatted['status'] = $attempt->status;
+            $formatted['feedback'] = $attempt->feedback;
+        }
+
         return [
             'learner' => $this->formatLearner($attempt->user),
-            'attempt' => [
-                'id' => $attempt->id,
-                'exercise' => [
-                    'id' => $exercise->id,
-                    'title' => $exercise->title,
-                    'language' => $exercise->language,
-                    'level' => $exercise->level,
-                ],
-                'score' => $attempt->score,
-                'status' => $attempt->status,
-                'feedback' => $attempt->feedback,
-                'created_at' => $attempt->created_at,
-            ],
+            'attempt' => $formatted,
         ];
     }
 

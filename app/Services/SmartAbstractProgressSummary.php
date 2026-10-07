@@ -8,6 +8,10 @@ use App\Models\User;
 class SmartAbstractProgressSummary
 {
     /**
+     * Smart Abstract is never graded: the AI only summarizes the document,
+     * so progress here is tracked by volume (how many summaries were
+     * generated), not by a score.
+     *
      * @return array<string, mixed>
      */
     public function forUser(User $user): array
@@ -15,11 +19,8 @@ class SmartAbstractProgressSummary
         $attemptsQuery = SmartAbstractAttempt::query()
             ->whereBelongsTo($user);
 
-        $totalAttempts = (clone $attemptsQuery)->count();
-        $averageScore = $totalAttempts > 0 ? (int) round((float) (clone $attemptsQuery)->avg('score')) : 0;
-        $bestScore = $totalAttempts > 0 ? (int) (clone $attemptsQuery)->max('score') : 0;
-        $completedExercises = (clone $attemptsQuery)
-            ->whereIn('status', ['excellent', 'good'])
+        $totalSummaries = (clone $attemptsQuery)->count();
+        $documentsCompleted = (clone $attemptsQuery)
             ->distinct('smart_abstract_exercise_id')
             ->count('smart_abstract_exercise_id');
         $latestAttempt = (clone $attemptsQuery)
@@ -28,10 +29,8 @@ class SmartAbstractProgressSummary
             ->first();
 
         return [
-            'total_attempts' => $totalAttempts,
-            'completed_exercises' => $completedExercises,
-            'average_score' => $averageScore,
-            'best_score' => $bestScore,
+            'total_summaries' => $totalSummaries,
+            'documents_completed' => $documentsCompleted,
             'latest_attempt' => $latestAttempt instanceof SmartAbstractAttempt
                 ? $this->formatAttempt($latestAttempt)
                 : null,
@@ -44,10 +43,8 @@ class SmartAbstractProgressSummary
     public function empty(): array
     {
         return [
-            'total_attempts' => 0,
-            'completed_exercises' => 0,
-            'average_score' => 0,
-            'best_score' => 0,
+            'total_summaries' => 0,
+            'documents_completed' => 0,
             'latest_attempt' => null,
         ];
     }
@@ -67,12 +64,7 @@ class SmartAbstractProgressSummary
                 'level' => $attempt->smartAbstractExercise->level,
             ],
             'summary' => $attempt->summary,
-            'score' => $attempt->score,
-            'status' => $attempt->status,
-            'improved_summary' => $attempt->improved_summary,
-            'missing_ideas' => $attempt->missing_ideas,
-            'strengths' => $attempt->strengths,
-            'feedback' => $attempt->feedback,
+            'key_points' => $attempt->strengths,
             'created_at' => $attempt->created_at,
         ];
     }

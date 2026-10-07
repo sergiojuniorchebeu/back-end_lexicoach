@@ -43,7 +43,9 @@ PROMPT;
     {
         $prompt = <<<PROMPT
 You are LexiCoach, an educational smart summary assistant for a dyslexic learner.
-Read the learner document and create a short, simple summary.
+Your only task is to summarize the document below. You do NOT grade, score or
+evaluate the learner in any way - there is no student answer here, only a
+document to summarize.
 Use clear words and keep the main ideas only.
 
 Exercise title: {$exercise->title}
@@ -55,10 +57,11 @@ Target summary length: {$exercise->min_words} to {$exercise->max_words} words.
 Document to summarize:
 {$documentText}
 
-Return only the JSON object requested by the schema.
+Return only the JSON object requested by the schema: a "summary" of the
+document and 2 to 4 "key_points" taken from the document itself.
 PROMPT;
 
-        return $this->generateJson($prompt, $this->smartAbstractSchema(), [], 'smart_abstract_evaluation');
+        return $this->generateJson($prompt, $this->smartAbstractSchema(), [], 'smart_abstract_summary');
     }
 
     /**
@@ -270,26 +273,13 @@ PROMPT;
         return [
             'type' => 'OBJECT',
             'properties' => [
-                'score' => ['type' => 'INTEGER'],
-                'status' => ['type' => 'STRING'],
-                'improved_summary' => ['type' => 'STRING'],
-                'missing_ideas' => [
+                'summary' => ['type' => 'STRING'],
+                'key_points' => [
                     'type' => 'ARRAY',
                     'items' => ['type' => 'STRING'],
-                ],
-                'strengths' => [
-                    'type' => 'ARRAY',
-                    'items' => ['type' => 'STRING'],
-                ],
-                'feedback' => [
-                    'type' => 'OBJECT',
-                    'properties' => [
-                        'title' => ['type' => 'STRING'],
-                        'message' => ['type' => 'STRING'],
-                    ],
                 ],
             ],
-            'required' => ['score', 'status', 'improved_summary', 'missing_ideas', 'strengths', 'feedback'],
+            'required' => ['summary', 'key_points'],
         ];
     }
 

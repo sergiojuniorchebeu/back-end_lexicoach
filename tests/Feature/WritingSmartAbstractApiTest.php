@@ -83,14 +83,14 @@ class WritingSmartAbstractApiTest extends TestCase
             ->assertOk()
             ->assertJsonPath('success', true)
             ->assertJsonPath('data.result.status', 'good')
-            ->assertJsonPath('data.result.score', 82)
-            ->assertJsonPath('data.result.feedback.title', 'Summary ready!')
-            ->assertJsonPath('data.attempt.score', 82);
+            ->assertJsonPath('data.result.score', 100)
+            ->assertJsonPath('data.result.feedback.title', 'Summary ready')
+            ->assertJsonPath('data.attempt.score', 100);
 
         $this->assertDatabaseHas('smart_abstract_attempts', [
             'user_id' => $learner->id,
             'smart_abstract_exercise_id' => $exercise->id,
-            'score' => 82,
+            'score' => 100,
             'status' => 'good',
         ]);
     }
@@ -186,18 +186,19 @@ class WritingSmartAbstractApiTest extends TestCase
         ]);
         SmartAbstractAttempt::factory()->create([
             'user_id' => $learner->id,
-            'score' => 90,
-            'status' => 'excellent',
         ]);
 
         Sanctum::actingAs($learner);
 
+        // Smart Abstract n'est jamais note (l'IA resume, elle ne juge pas
+        // l'apprenant) : le progres s'y mesure en nombre de resumes, pas en
+        // score moyen.
         $this->getJson('/api/me/progress')
             ->assertOk()
             ->assertJsonPath('data.progress.writing.summary.total_attempts', 1)
             ->assertJsonPath('data.progress.writing.summary.average_score', 80)
-            ->assertJsonPath('data.progress.smart-abstract.summary.total_attempts', 1)
-            ->assertJsonPath('data.progress.smart-abstract.summary.average_score', 90);
+            ->assertJsonPath('data.progress.smart-abstract.summary.total_summaries', 1)
+            ->assertJsonPath('data.progress.smart-abstract.summary.documents_completed', 1);
     }
 
     public function test_tutor_can_view_linked_learner_ai_attempts(): void
@@ -212,7 +213,6 @@ class WritingSmartAbstractApiTest extends TestCase
         ]);
         SmartAbstractAttempt::factory()->create([
             'user_id' => $learner->id,
-            'score' => 83,
         ]);
 
         Sanctum::actingAs($tutor);
@@ -221,9 +221,11 @@ class WritingSmartAbstractApiTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.attempts.0.score', 81);
 
+        // Pas de score pour Smart Abstract (non note) : on verifie juste
+        // que la tentative (et son resume) remonte bien au tuteur.
         $this->getJson("/api/tutor/learners/{$learner->id}/smart-abstract-attempts")
             ->assertOk()
-            ->assertJsonPath('data.attempts.0.score', 83);
+            ->assertJsonCount(1, 'data.attempts');
     }
 
     public function test_ai_exercise_routes_require_learner_role(): void
